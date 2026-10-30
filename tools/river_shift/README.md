@@ -68,7 +68,7 @@ For a signed bankline movement measurement, digitise two dated banklines and use
 See `README_08_measure_bankline_migration.md` and `river_shift/README_06_transects.md` before running it.
 
 ### GCOV time-series feasibility audit
-Run `audit_gcov_acquisitions.py` against the NASA CMR UMM-JSON catalogue manifest before downloading or analysing products. It requires a minimum of three distinct acquisition dates, the same maturity/orbit/track/bandwidth/polarization/processing type, and sufficient footprint-union coverage of the same AOI on each date. The default minimum is 90%; the team can raise it when the AOI is smaller and full coverage is needed.
+Run `audit_gcov_acquisitions.py` against the NASA CMR CMR UMM-G 1.6.7 catalogue manifest before downloading or analysing products. It requires a minimum of three distinct acquisition dates, the same maturity/orbit/track/bandwidth/polarization/processing type, and sufficient footprint-union coverage of the same AOI on each date. The default minimum is 90%; the team can raise it when the AOI is smaller and full coverage is needed.
 
 The GitHub Actions workflow `.github/workflows/river-shift-gcov-audit.yml` runs public catalogue discovery and footprint feasibility without downloading imagery. It runs automatically when the catalogue/audit code or audit workflow changes on this feature branch, and it can also be launched manually with a team-approved AOI/date window. The default Sirajganj–Kazipur AOI is explicitly a candidate and is not approved.
 
