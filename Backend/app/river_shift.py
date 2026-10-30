@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/river-shift", tags=["RiverShift"])
 
-ASF_SEARCH_URL = "https://api.daac.asf.alaska.edu/services/search/param"
+CMR_SEARCH_URL = "https://cmr.earthdata.nasa.gov/search/granules.umm_json_v1_18_5"
+CMR_ACCEPT = "application/vnd.nasa.cmr.umm_results+json; version=1.18.5"
 MAX_RESULTS = 200
 MAX_AOI_AREA_KM2 = 1_000.0
 TIMEOUT_SECONDS = 25
@@ -54,6 +55,8 @@ class RiverShiftProduct(BaseModel):
     main_band_polarization: str | None = None
     frame_coverage: str | None = None
     size_mb: float | None = None
+    footprint: dict[str, Any] | None = None
+    cmr_concept_id: str | None = None
 
 
 class RiverShiftCatalogResponse(BaseModel):
@@ -236,6 +239,135 @@ def _product(row: dict[str, Any]) -> RiverShiftProduct | None:
     )
 
 
+
+def _umm_footprint(umm: dict[str, Any]) -> dict[str, Any] | None:
+    spatial = (
+        umm.get("SpatialExtent", {})
+        .get("HorizontalSpatialDomain", {})
+        .get("Geometry", {})
+    )
+    polygons = []
+    for item in spatial.get("GPolygons", []) if isinstance(spatial, dict) else []:
+        if not isinstance(item, dict):
+            continue
+        points = item.get("Boundary", {}).get("Points", [])
+        exterior = [
+            [float(point["Longitude"]), float(point["Latitude"])]
+            for point in points
+            if isinstance(point, dict) and "Longitude" in point and "Latitude" in point
+        ]
+        if len(exterior) < 3:
+            continue
+        if exterior[0] != exterior[-1]:
+            exterior.append(exterior[0])
+        rings = [exterior]
+        for hole in item.get("ExclusiveZone", []) if isinstance(item.get("ExclusiveZone"), list) else []:
+            hole_points = hole.get("Boundary", {}).get("Points", []) if isinstance(hole, dict) else []
+            ring = [
+                [float(point["Longitude"]), float(point["Latitude"])]
+                for point in hole_points
+                if isinstance(point, dict) and "Longitude" in point and "Latitude" in point
+            ]
+            if len(ring) >= 3:
+                if ring[0] != ring[-1]:
+                    ring.append(ring[0])
+                rings.append(ring)
+        polygons.append(rings)
+
+    if not polygons:
+        return None
+    if len(polygons) == 1:
+        return {"type": "Polygon", "coordinates": polygons[0]}
+    return {"type": "MultiPolygon", "coordinates": polygons}
+
+
+def _umm_product(item: dict[str, Any], maturity: str) -> RiverShiftProduct | None:
+    umm = item.get("umm")
+    if not isinstance(umm, dict):
+        return None
+    name = _first_string(umm, ("GranuleUR",))
+    if not name:
+        return None
+    name = name.removesuffix(".h5")
+    parts = _granule_parts(name)
+    if not parts:
+        return None
+
+    temporal = umm.get("TemporalExtents") or []
+    start_time = parts["acquisition_start_utc"]
+    stop_time = parts["acquisition_end_utc"]
+    for extent in temporal:
+        if not isinstance(extent, dict):
+            continue
+        ranges = extent.get("RangeDateTimes") or []
+        if ranges and isinstance(ranges[0], dict):
+            start_time = ranges[0].get("BeginningDateTime") or start_time
+            stop_time = ranges[0].get("EndingDateTime") or stop_time
+            break
+
+    url = None
+    for relation in umm.get("RelatedUrls") or []:
+        if not isinstance(relation, dict):
+            continue
+        url_type = str(relation.get("Type", "")).upper()
+        content_type = str(relation.get("URLContentType", "")).upper()
+        candidate = relation.get("URL")
+        if isinstance(candidate, str) and candidate.startswith("https://") and (
+            url_type in {"GET DATA", "GET DATA VIA DIRECT ACCESS"}
+            or content_type == "DISTRIBUTIONURL"
+        ):
+            url = candidate
+            if url_type == "GET DATA":
+                break
+    if not url:
+        url = (
+            "https://nisar.asf.earthdatacloud.nasa.gov/NISAR/"
+            f"NISAR_L2_GCOV_{maturity}_V1/{name}/{name}.h5"
+        )
+
+    polarization = {
+        "SH": "HH", "SV": "VV", "DH": "HH+HV", "DV": "VV+VH",
+        "CL": "LH+LV", "CR": "RH+RV",
+    }.get((parts["polarization_code"] or "")[:2])
+
+    size_mb = None
+    data_granule = umm.get("DataGranule") or {}
+    if isinstance(data_granule, dict):
+        for info in data_granule.get("ArchiveAndDistributionInformation") or []:
+            if not isinstance(info, dict):
+                continue
+            try:
+                value = float(info.get("Size"))
+            except (TypeError, ValueError):
+                continue
+            unit = str(info.get("SizeUnit", "MB")).upper()
+            factor = {"B": 1 / 1_000_000, "KB": 1 / 1_000, "MB": 1, "GB": 1_000}.get(unit)
+            if factor is not None:
+                size_mb = value * factor
+                break
+
+    meta = item.get("meta") or {}
+    return RiverShiftProduct(
+        granule_name=name,
+        processing_type=parts["processing_type"],
+        crid=parts["crid"],
+        maturity=maturity,
+        download_url=url,
+        start_time_utc=start_time,
+        stop_time_utc=stop_time,
+        flight_direction=parts["flight_direction"],
+        relative_orbit=parts["relative_orbit"],
+        cycle=parts["cycle"],
+        frame=parts["frame"],
+        bandwidth_mode=parts["bandwidth_mode"],
+        polarization_code=parts["polarization_code"],
+        main_band_polarization=polarization,
+        frame_coverage=parts["frame_coverage"],
+        size_mb=size_mb,
+        footprint=_umm_footprint(umm),
+        cmr_concept_id=meta.get("concept-id") if isinstance(meta, dict) else None,
+    )
+
 def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalogResponse:
     coordinates = _validate_coordinates(request.coordinates)
     area = _area_km2(coordinates)
@@ -249,109 +381,116 @@ def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalo
     if (request.end_date - request.start_date).days > 366:
         raise HTTPException(status_code=422, detail="Search window cannot exceed 366 days.")
 
-    params = {
-        "dataset": "NISAR",
-        "processingLevel": "GCOV",
-        "intersectsWith": _polygon_wkt(coordinates),
-        "start": f"{request.start_date.isoformat()}T00:00:00Z",
-        "end": f"{request.end_date.isoformat()}T23:59:59Z",
-        "output": "json",
-        "frameCoverage": request.frame_coverage if request.frame_coverage != "ALL" else "",
-        "maxResults": str(request.max_results),
-    }
-    if request.main_band_polarization:
-        params["mainBandPolarization"] = request.main_band_polarization
-    if request.flight_direction:
-        params["flightDirection"] = request.flight_direction
-    if not params["frameCoverage"]:
-        params.pop("frameCoverage")
+    oriented = list(coordinates)
+    signed_area = sum(
+        oriented[index][0] * oriented[index + 1][1]
+        - oriented[index + 1][0] * oriented[index][1]
+        for index in range(len(oriented) - 1)
+    )
+    if signed_area < 0:
+        open_ring = list(reversed(oriented[:-1]))
+        oriented = [*open_ring, open_ring[0]]
 
-    def execute_search(search_params: dict[str, str]) -> tuple[Any, str]:
-        search_url = f"{ASF_SEARCH_URL}?{urllib.parse.urlencode(search_params)}"
+    polygon = ",".join(f"{lon:.8f},{lat:.8f}" for lon, lat in oriented)
+    temporal = f"{request.start_date.isoformat()}T00:00:00Z,{request.end_date.isoformat()}T23:59:59Z"
+    maturities = ("BETA", "PROVISIONAL") if request.maturity == "ALL" else (request.maturity,)
+    products: list[RiverShiftProduct] = []
+    query_records = []
+    total_hits = 0
+
+    for maturity in maturities:
+        collection_short_name = f"NISAR_L2_GCOV_{maturity}_V1"
+        params = {
+            "short_name": collection_short_name,
+            "temporal[]": temporal,
+            "polygon": polygon,
+            "page_size": str(request.max_results),
+            "page_num": "1",
+        }
+        url = f"{CMR_SEARCH_URL}?{urllib.parse.urlencode(params)}"
         http_request = urllib.request.Request(
-            search_url,
-            headers={"Accept": "application/json", "User-Agent": "SARGuardian-RiverShift/0.1"},
+            url,
+            headers={
+                "Accept": CMR_ACCEPT,
+                "User-Agent": "SARGuardian-RiverShift/0.2",
+            },
         )
         try:
             with urllib.request.urlopen(http_request, timeout=TIMEOUT_SECONDS) as response:
-                response_payload = json.loads(response.read().decode("utf-8"))
+                payload = json.loads(response.read().decode("utf-8"))
+                hits = int(response.headers.get("CMR-Hits", payload.get("hits", 0)))
         except urllib.error.HTTPError as exc:
-            raise HTTPException(status_code=502, detail=f"ASF catalogue returned HTTP {exc.code}.") from None
+            raise HTTPException(status_code=502, detail=f"NASA CMR returned HTTP {exc.code}.") from None
         except (urllib.error.URLError, TimeoutError):
-            raise HTTPException(status_code=504, detail="ASF catalogue request timed out or could not be reached.") from None
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            raise HTTPException(status_code=502, detail="ASF catalogue returned an invalid response.") from None
-        return response_payload, search_url
+            raise HTTPException(status_code=504, detail="NASA CMR request timed out or could not be reached.") from None
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
+            raise HTTPException(status_code=502, detail="NASA CMR returned invalid UMM-JSON metadata.") from None
 
-    payload, strict_url = execute_search(params)
-    strict_rows = _extract_rows(payload)
-    raw_rows = strict_rows
-    fallback_payload: Any = None
-    fallback_url: str | None = None
-    fallback_used = False
+        if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+            raise HTTPException(status_code=502, detail="NASA CMR returned an unexpected UMM-JSON response shape.")
+        total_hits += hits
+        received = 0
+        for item in payload["items"]:
+            if not isinstance(item, dict):
+                continue
+            received += 1
+            product = _umm_product(item, maturity)
+            if product is None:
+                continue
+            if request.main_band_polarization and product.main_band_polarization != request.main_band_polarization:
+                continue
+            if request.flight_direction and product.flight_direction != request.flight_direction:
+                continue
+            if request.frame_coverage != "ALL" and product.frame_coverage != request.frame_coverage:
+                continue
+            products.append(product)
+            if len(products) >= request.max_results:
+                break
 
-    if not raw_rows:
-        broad_params = dict(params)
-        broad_params.pop("processingLevel", None)
-        fallback_payload, fallback_url = execute_search(broad_params)
-        broad_rows = _extract_rows(fallback_payload)
-        fallback_rows = [row for row in broad_rows if _product(row) is not None]
-        if fallback_rows:
-            raw_rows = fallback_rows
-            fallback_used = True
+        query_records.append({
+            "collection_short_name": collection_short_name,
+            "request_url": url,
+            "cmr_reported_hits": hits,
+            "records_received": received,
+        })
 
-    products: list[RiverShiftProduct] = []
-    for row in raw_rows:
-        product = _product(row)
-        if product is None:
-            continue
-        if request.maturity != "ALL" and product.maturity != request.maturity:
-            continue
-        products.append(product)
-
-    warnings = []
-    if len(raw_rows) >= request.max_results:
-        warnings.append("ASF result cap reached. Narrow the AOI or date range and search again.")
-    if any(item.maturity == "UNKNOWN" for item in products):
-        warnings.append("Some maturity values are unknown. Do not mix them into a BETA or PROVISIONAL time series.")
+    products.sort(key=lambda item: str(item.start_time_utc or ""))
+    warnings = [
+        "NISAR GCOV products are discovered by official CMR collection short name. Catalogue discovery does not download data or run scientific analysis.",
+        "Use the separate footprint audit to verify AOI coverage on every acquisition date before selecting a time series.",
+    ]
+    if total_hits > len(products) and len(products) >= request.max_results:
+        warnings.append("Product result cap reached. Narrow the AOI/date interval or query one maturity at a time.")
     if not products:
-        warnings.append("No GCOV products passed the selected AOI, time, polarization and maturity filters.")
-    if not strict_rows and fallback_payload is not None and not fallback_used:
-        warnings.append("Both the strict GCOV query and broader NISAR query returned zero GCOV records.")
-    elif fallback_used:
-        warnings.append("The strict processingLevel=GCOV query returned zero records; GCOV products were found using a broader NISAR search and local official-name/product-level filtering.")
+        warnings.append("NASA CMR returned no granules for the selected collection short name(s), AOI and temporal interval.")
 
     status = "ready" if products else "no_data"
     message = (
-        f"Found {len(products)} GCOV product(s). Catalogue discovery only; no data has been downloaded or analysed."
-        if products
-        else "No matching GCOV products were found for this query."
+        f"Found {len(products)} GCOV product(s). CMR catalogue discovery only; no data has been downloaded or analysed."
+        if products else "No matching NISAR GCOV products were returned by NASA CMR for this query."
     )
     return RiverShiftCatalogResponse(
         status=status,
         message=message,
         query={
-            "aoi_wkt": _polygon_wkt(coordinates),
+            "aoi_wkt": _polygon_wkt(oriented),
             "start_date": request.start_date.isoformat(),
             "end_date": request.end_date.isoformat(),
             "maturity": request.maturity,
+            "collection_short_names": [f"NISAR_L2_GCOV_{value}_V1" for value in maturities],
             "main_band_polarization": request.main_band_polarization,
             "flight_direction": request.flight_direction,
             "frame_coverage": request.frame_coverage,
-            "archive": "ASF DAAC Search API",
-            "response_format": "json",
-            "strict_gcove_record_count": len(strict_rows),
-            "broader_query_used": fallback_payload is not None,
-            "broader_query_record_count": len(_extract_rows(fallback_payload)) if fallback_payload is not None else 0,
-            "local_gcov_fallback_used": fallback_used,
-            "strict_query_url": strict_url,
-            "broader_query_url": fallback_url,
+            "archive": "NASA CMR / ASF DAAC",
+            "endpoint": CMR_SEARCH_URL,
+            "response_format": "UMM-JSON 1.18.5",
+            "reported_cmr_hits": total_hits,
+            "collection_queries": query_records,
         },
         product_count=len(products),
         products=products,
         warnings=warnings,
     )
-
 
 @router.post("/catalog/search", response_model=RiverShiftCatalogResponse)
 def river_shift_catalog_search(request: RiverShiftCatalogRequest) -> RiverShiftCatalogResponse:
