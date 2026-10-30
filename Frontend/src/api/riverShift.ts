@@ -9,13 +9,20 @@ export type RiverShiftCatalogScene = {
   granule_name: string;
   product_id?: string | null;
   product_type: string;
-  data_maturity: string;
+  data_maturity?: string | null;
+  catalogue_maturity_filter: RiverShiftMaturity;
+  maturity_evidence: 'product_metadata' | 'ASF query filter only';
   start_time?: string | null;
   stop_time?: string | null;
   flight_direction?: string | null;
+  relative_orbit?: string | number | null;
   path_number?: string | number | null;
   frame_number?: string | number | null;
+  acquisition_mode?: string | null;
   polarization?: string | null;
+  polarization_mode?: string | null;
+  frequency?: string | null;
+  crid?: string | null;
   url?: string | null;
   size_bytes?: number | null;
 };
@@ -23,7 +30,7 @@ export type RiverShiftCatalogScene = {
 export type RiverShiftCatalogResponse = {
   dataset: 'NISAR';
   processing_level: 'GCOV';
-  data_maturity: RiverShiftMaturity;
+  requested_maturity_filter: RiverShiftMaturity;
   start_date: string;
   end_date: string;
   aoi_area_km2: number;
