@@ -39,3 +39,25 @@ def test_invalid_frequency_is_rejected(tmp_path):
     _write_fixture(path)
     with pytest.raises(GcovReadError):
         read_gcov(path, frequency="C")
+
+
+def test_read_gcov_resolves_cf_grid_mapping_attributes(tmp_path):
+    path = tmp_path / "synthetic_gcov_cf.h5"
+    with h5py.File(path, "w") as h5:
+        base = h5.create_group("/science/LSAR/GCOV/grids/frequencyA")
+        base.create_dataset("VVVV", data=np.full((2, 2), 0.2, dtype=np.float32))
+        base.create_dataset("xCoordinates", data=np.array([500005.0, 500015.0]))
+        base.create_dataset("yCoordinates", data=np.array([2800005.0, 2799995.0]))
+        projection = base.create_dataset("projection", data=np.array(0, dtype=np.int32))
+        projection.attrs["grid_mapping_name"] = "transverse_mercator"
+        projection.attrs["latitude_of_projection_origin"] = 0.0
+        projection.attrs["longitude_of_central_meridian"] = 93.0
+        projection.attrs["scale_factor_at_central_meridian"] = 0.9996
+        projection.attrs["false_easting"] = 500000.0
+        projection.attrs["false_northing"] = 0.0
+        projection.attrs["semi_major_axis"] = 6378137.0
+        projection.attrs["inverse_flattening"] = 298.257223563
+
+    result = read_gcov(path, frequency="A", covariance_term="VVVV")
+    assert result.crs.is_projected
+    assert result.epsg is not None or "TRANSVERSE MERCATOR" in result.crs.to_wkt().upper()
