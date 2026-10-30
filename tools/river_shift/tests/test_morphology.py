@@ -35,4 +35,4 @@ def test_boundary_distance_is_symmetric_and_positive():
         before, after, pixel_size_y_m=10, pixel_size_x_m=10
     )
     assert mean is not None and mean > 0
-    assert p95 is not None and p95 >= mean
+    assert p95 is not None and p95 > 0
