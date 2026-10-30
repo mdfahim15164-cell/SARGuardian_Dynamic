@@ -25,7 +25,8 @@ Acceptance:
 
 ### 3. Validity (1–20)
 Evidence:
-- Per-script scientific README, methods, assumptions, tests, validation report, reference source and limitations.
+- Per-script and per-algorithm scientific README, methods, assumptions, tests, validation report, reference source and limitations.
+- Signed bankline chainage displacement along reviewed transects, with a declared sign convention and invalid-intersection handling.
 - Synthetic algorithm tests plus independent real-world validation.
 Acceptance:
 - Time-series inputs meet acquisition comparability requirements.
@@ -106,6 +107,7 @@ Provide these files/links in the repository:
 - tools/river_shift/README.md
 - README_01 through README_07, each immediately preceding its script's task.
 - Reproducible commands, tests, real case-study outputs, provenance manifest and validation report.
+- README_08 for signed bankline migration, plus a module README for transect calculations.
 
 ## Final pass/fail gate
 Do not mark RiverShift ready for final judging until:
