@@ -27,6 +27,10 @@ Evidence:
 - [x] Inspect native GCOV HDF5 subdatasets and available diagonal terms.
 - [x] Export a selected covariance term to an AOI-clipped COG.
 - [x] Document GDAL 3.13+, WGS84 AOI and gamma0 power contracts.
+- [x] Parse official single-acquisition GCOV granule names and preserve CRID, frame coverage, orbit, polarization and acquisition time.
+- [x] Use the documented ASF JSON response format and do not infer unknown maturity.
+- [x] Add multi-date comparability and per-date AOI footprint coverage audit.
+- [x] Add a manual GitHub Actions workflow for real ASF catalogue/footprint discovery without downloading data.
 - [x] Parse the official single-acquisition GCOV filename and preserve CRID/frame/orbit/polarization metadata.
 - [x] Use the documented ASF JSON response format and preserve unknown maturity instead of guessing.
 - [x] Add a multi-date compatibility and per-date AOI footprint coverage audit.
@@ -34,6 +38,7 @@ Evidence:
 - [x] Add a candidate Sirajganj–Kazipur search polygon, clearly marked NOT APPROVED.
 - [ ] Select and independently review the final Jamuna/Sirajganj study AOI and replace the candidate polygon.
 - [ ] Manually run the GitHub Actions GCOV audit workflow using the team-approved AOI.
+- [ ] Run the manual GitHub Actions GCOV audit workflow with the team-approved AOI and download its catalogue/feasibility artifacts.
 - [ ] Query ASF and save an actual catalogue manifest for the selected AOI.
 - [ ] Confirm at least three comparable acquisitions exist for one event.
 - [ ] Confirm same maturity, frequency, diagonal term, orbit direction, relative track, frame, mode and compatible incidence geometry.
