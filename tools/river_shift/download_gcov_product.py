@@ -43,12 +43,38 @@ def find_product(manifest_path: Path, granule_name: str) -> dict:
     return matches[0]
 
 
+def build_product_url(granule_name: str, maturity: str) -> str:
+    """Build an official ASF HTTPS asset URL from an exact GCOV collection identity."""
+    if maturity not in {"BETA", "PROVISIONAL"}:
+        raise ValueError("A known BETA or PROVISIONAL maturity is required to construct an ASF URL.")
+    name = granule_name.removesuffix(".h5")
+    fields = name.split("_")
+    if (
+        len(fields) != 18
+        or fields[0] != "NISAR"
+        or fields[1] != "L2"
+        or fields[2] not in {"PR", "UR", "OD"}
+        or fields[3] != "GCOV"
+        or fields[6] not in {"A", "D"}
+        or fields[15] not in {"F", "P"}
+        or not re.fullmatch(r"[0-9]{3}", fields[4])
+        or not re.fullmatch(r"[0-9]{3}", fields[5])
+        or not re.fullmatch(r"[0-9]{3}", fields[7])
+    ):
+        raise ValueError("Granule name does not match the official NISAR single-acquisition GCOV convention.")
+    return (
+        "https://nisar.asf.earthdatacloud.nasa.gov/NISAR/"
+        f"NISAR_L2_GCOV_{maturity}_V1/{name}/{name}.h5"
+    )
+
+
 def download_product(product: dict, output_dir: Path, timeout_seconds: int) -> dict:
+    name = str(product.get("granule_name") or "")
     url = product.get("download_url")
+    if not url and product.get("maturity") in {"BETA", "PROVISIONAL"}:
+        url = build_product_url(name, str(product["maturity"]))
     if not isinstance(url, str) or not trusted_asf_url(url):
         raise ValueError("Catalogue record has no trusted HTTPS ASF product URL.")
-
-    name = str(product.get("granule_name") or "")
     if not re.fullmatch(r"[A-Za-z0-9_.-]{10,250}", name):
         raise ValueError("Granule name contains unsupported characters.")
     output_dir.mkdir(parents=True, exist_ok=True)
