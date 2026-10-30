@@ -42,7 +42,7 @@ Erosion candidates: pre-event land that is water in both post-recession observat
 Deposition candidates: pre-event water that is land in both post-recession observations.
 Two post-event dates improve persistence screening but do not establish causality or permanence in a geomorphic/legal sense.
 
-The symmetric boundary-distance statistic is a proximity-based change proxy. It does not identify signed retreat/accretion direction and is not a transect-derived migration rate. A later research milestone should implement centerline/active-belt extraction and signed perpendicular transects, then validate them against independently digitized banklines.
+The symmetric boundary-distance statistic remains a proximity-based change proxy and must not be interpreted as signed retreat/accretion. A separate transect module now measures signed chainage differences along user-supplied, consistently oriented cross-sections. It requires independently digitised banklines, a projected metre CRS, and exactly one intersection per bankline per transect. Automated bankline extraction and active-channel belt delineation remain future work. Transect sign depends on the user-declared start-to-end direction, and the two-date rate is not a long-term trend.
 
 ## Data maturity
 Never mix BETA and PROVISIONAL products in the same analysis series. Store maturity with each output. Unknown maturity is not silently converted to a known maturity. Reprocessing/version changes require an explicit new series and a note in the provenance.
