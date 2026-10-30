@@ -1,0 +1,186 @@
+"""Strict reader for NISAR GCOV diagonal backscatter layers."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import h5py
+import numpy as np
+from pyproj import CRS
+
+
+VALID_DIAGONAL_TERMS = {"HHHH", "HVHV", "VVVV", "VHVH", "RHRH", "RVRV"}
+
+
+class GcovReadError(ValueError):
+    """Raised when a NISAR GCOV product does not meet the reader contract."""
+
+
+@dataclass(frozen=True)
+class GcovRaster:
+    power: np.ndarray
+    valid_mask: np.ndarray
+    x_coordinates: np.ndarray
+    y_coordinates: np.ndarray
+    epsg: int
+    frequency: str
+    covariance_term: str
+    source_path: str
+    units: str | None
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return self.power.shape
+
+    @property
+    def pixel_area_m2(self) -> float:
+        dx = float(np.median(np.diff(self.x_coordinates)))
+        dy = float(np.median(np.diff(self.y_coordinates)))
+        crs = CRS.from_epsg(self.epsg)
+        if not crs.is_projected:
+            raise GcovReadError("GCOV grid must use a projected CRS to derive pixel area.")
+        axes = crs.axis_info
+        if len(axes) < 2:
+            raise GcovReadError("Projected CRS does not expose two axis unit conversion factors.")
+        factor_x = float(axes[0].unit_conversion_factor or 1.0)
+        factor_y = float(axes[1].unit_conversion_factor or 1.0)
+        return abs(dx * factor_x * dy * factor_y)
+
+
+def _decode_scalar(value: Any) -> Any:
+    if isinstance(value, np.ndarray) and value.shape == ():
+        value = value.item()
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
+def _find_epsg(projection: h5py.Dataset) -> int:
+    candidates = [projection[()]]
+    candidates.extend(projection.attrs.get(key) for key in ("epsg_code", "epsgCode", "spatial_ref", "crs_wkt"))
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        value = _decode_scalar(candidate)
+        if isinstance(value, (int, np.integer)):
+            if int(value) > 0:
+                return int(value)
+        text = str(value)
+        if "EPSG:" in text.upper():
+            try:
+                return int(text.upper().split("EPSG:", 1)[1].split()[0].strip(" ,;)]}"))
+            except ValueError:
+                pass
+    raise GcovReadError("Could not resolve the EPSG code from the GCOV projection dataset.")
+
+
+def _check_regular_axis(values: np.ndarray, name: str) -> None:
+    if values.ndim != 1 or values.size < 2 or not np.all(np.isfinite(values)):
+        raise GcovReadError(f"{name} must be a finite 1-D coordinate array with at least 2 values.")
+    delta = np.diff(values.astype(np.float64))
+    if not (np.all(delta > 0) or np.all(delta < 0)):
+        raise GcovReadError(f"{name} must be strictly monotonic.")
+    median = float(np.median(np.abs(delta)))
+    if median <= 0 or not np.allclose(np.abs(delta), median, rtol=1e-4, atol=1e-6):
+        raise GcovReadError(f"{name} is not regularly spaced; an affine raster transform is unsafe.")
+
+
+def read_gcov(
+    source_path: str | Path,
+    *,
+    frequency: str = "A",
+    covariance_term: str = "VVVV",
+) -> GcovRaster:
+    """Load one real-valued GCOV diagonal term and its geospatial grid metadata.
+
+    The returned array is not resampled or thresholded. Its numeric values remain
+    in the units stored by the source product (normally linear gamma-naught power).
+    """
+    frequency = frequency.upper()
+    covariance_term = covariance_term.upper()
+    if frequency not in {"A", "B"}:
+        raise GcovReadError("frequency must be A or B.")
+    if covariance_term not in VALID_DIAGONAL_TERMS:
+        raise GcovReadError(f"covariance_term must be one of {sorted(VALID_DIAGONAL_TERMS)}.")
+
+    path = Path(source_path)
+    if not path.is_file():
+        raise GcovReadError(f"GCOV file does not exist: {path}")
+
+    grid_path = f"/science/LSAR/GCOV/grids/frequency{frequency}"
+    data_path = f"{grid_path}/{covariance_term}"
+
+    try:
+        with h5py.File(path, "r") as h5:
+            for required in (data_path, f"{grid_path}/xCoordinates", f"{grid_path}/yCoordinates", f"{grid_path}/projection"):
+                if required not in h5:
+                    raise GcovReadError(f"Required GCOV dataset is missing: {required}")
+
+            dataset = h5[data_path]
+            if np.issubdtype(dataset.dtype, np.complexfloating):
+                raise GcovReadError("A diagonal covariance power layer must be real-valued.")
+            power = np.asarray(dataset[()], dtype=np.float32)
+            x = np.asarray(h5[f"{grid_path}/xCoordinates"][()], dtype=np.float64)
+            y = np.asarray(h5[f"{grid_path}/yCoordinates"][()], dtype=np.float64)
+            epsg = _find_epsg(h5[f"{grid_path}/projection"])
+            units_value = dataset.attrs.get("units")
+            units = str(_decode_scalar(units_value)) if units_value is not None else None
+
+            if power.ndim != 2:
+                raise GcovReadError("GCOV covariance layer must be a 2-D raster.")
+            if power.shape != (y.size, x.size):
+                raise GcovReadError(
+                    f"Raster shape {power.shape} does not match y/x coordinate sizes {(y.size, x.size)}."
+                )
+            _check_regular_axis(x, "xCoordinates")
+            _check_regular_axis(y, "yCoordinates")
+
+            valid = np.isfinite(power) & (power > 0)
+            looks_path = f"{grid_path}/numberOfLooks"
+            if looks_path in h5:
+                looks = np.asarray(h5[looks_path][()], dtype=np.float32)
+                if looks.shape != power.shape:
+                    raise GcovReadError("numberOfLooks shape does not match the covariance layer.")
+                valid &= np.isfinite(looks) & (looks > 0)
+
+    except OSError as exc:
+        raise GcovReadError(f"Could not open GCOV HDF5 product: {exc}") from exc
+
+    return GcovRaster(
+        power=power,
+        valid_mask=valid,
+        x_coordinates=x,
+        y_coordinates=y,
+        epsg=epsg,
+        frequency=frequency,
+        covariance_term=covariance_term,
+        source_path=str(path),
+        units=units,
+    )
+
+
+def inspect_gcov(source_path: str | Path) -> dict[str, Any]:
+    """Return a small, auditable inventory of candidate GCOV layers in a file."""
+    path = Path(source_path)
+    if not path.is_file():
+        raise GcovReadError(f"GCOV file does not exist: {path}")
+    inventory: list[dict[str, Any]] = []
+    with h5py.File(path, "r") as h5:
+        root = "/science/LSAR/GCOV/grids"
+        if root not in h5:
+            raise GcovReadError("This HDF5 file does not expose the documented LSAR GCOV grid group.")
+        for frequency in ("A", "B"):
+            group_path = f"{root}/frequency{frequency}"
+            if group_path not in h5:
+                continue
+            group = h5[group_path]
+            for term in sorted(VALID_DIAGONAL_TERMS):
+                if term in group and isinstance(group[term], h5py.Dataset):
+                    inventory.append({
+                        "frequency": frequency,
+                        "covariance_term": term,
+                        "shape": list(group[term].shape),
+                        "dtype": str(group[term].dtype),
+                    })
+    return {"source_path": str(path), "product_family": "GCOV", "layers": inventory}
