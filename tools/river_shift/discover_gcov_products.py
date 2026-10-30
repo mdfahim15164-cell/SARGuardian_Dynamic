@@ -92,6 +92,7 @@ def parse_granule_metadata(name: str) -> dict[str, str | None]:
         raise ValueError(f"GCOV acquisition end precedes acquisition start: {name}")
 
     return {
+        "processing_type": parts[2],
         "cycle": parts[4],
         "relative_orbit": parts[5],
         "orbit_direction": parts[6],
@@ -162,6 +163,7 @@ def normalize_product(row: dict[str, Any]) -> dict[str, Any] | None:
         "flight_direction": direction,
         "frame_coverage": frame_coverage,
         "footprint": row.get("geometry") or row.get("footprint"),
+        "footprint_wkt": first_string(row, ("wkt", "footprintWkt", "footprint_wkt")),
         "main_band_polarization": first_string(row, ("mainBandPolarization", "polarization")) or {
             "SH": "HH", "SV": "VV", "DH": "HH+HV", "DV": "VV+VH",
             "CL": "LH+LV", "CR": "RH+RV",
