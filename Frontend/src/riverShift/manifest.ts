@@ -40,6 +40,7 @@ export function parseRiverShiftReport(value: unknown): RiverShiftReport {
     'flood_inundation_screening',
     'river_morphology_screening',
     'classification_validation',
+    'bankline_migration',
   ];
   if (typeof candidate.analysis_type !== 'string' || !validTypes.includes(candidate.analysis_type)) {
     throw new Error('Unsupported RiverShift analysis type.');
