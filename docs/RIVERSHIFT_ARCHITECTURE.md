@@ -11,7 +11,7 @@ RiverShift is an independent surface-change engine inside SARGuardian for mappin
 ## Data flow
 1. User chooses a WGS84 AOI and acquisition interval.
 2. Frontend calls the read-only GCOV catalogue endpoint.
-3. Backend queries ASF DAAC for dataset=NISAR and processingLevel=GCOV.
+3. Backend searches NASA CMR using `NISAR_L2_GCOV_PROVISIONAL_V1` or `NISAR_L2_GCOV_BETA_V1` collection short names and retrieves UMM-G granule metadata; the product archive/data links are from ASF DAAC.
 4. A catalogue/footprint audit groups products by maturity, orbit, relative track, bandwidth, polarization and processing type, then measures AOI coverage per acquisition date.
 5. User reviews granule dates, compatibility groups, CRID, frame coverage and AOI footprint percentages.
 6. Local CLI or a future isolated GitHub Actions worker downloads the exact selected HDF5 products.
@@ -24,7 +24,7 @@ RiverShift is an independent surface-change engine inside SARGuardian for mappin
 Existing platform components include React/Vite, FastAPI, Firebase identity, Supabase job metadata, GitHub Actions, Google Drive artifact storage, and NISAR GUNW/GOFF workflows. Existing GUNW/GOFF workflows are not repurposed as GCOV water classification.
 
 New RiverShift deliverables in this PR:
-- Separate read-only GCOV catalogue endpoint.
+- Separate read-only CMR collection-based GCOV catalogue endpoint.
 - GCOV manifest, exact download, HDF5 inspection and AOI export scripts.
 - Flood inundation screening.
 - Persistent erosion/deposition candidate screening.
@@ -46,7 +46,7 @@ GCOV is the Level-2 geocoded polarimetric covariance/backscatter product, suitab
 
 ## Frontend contract
 Route: /river-shift.
-- Live ASF catalogue search returns only metadata.
+- Live CMR collection-based GCOV search returns metadata and footprints only.
 - Results explorer loads script-produced result JSON and GeoJSON.
 - Every metric is presented with source provenance, QA status and warning text.
 - No default/example metric is shown as measured data.
