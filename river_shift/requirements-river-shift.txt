@@ -1,0 +1,6 @@
+numpy>=1.26
+h5py>=3.10
+pyproj>=3.6
+shapely>=2.0
+asf_search>=9.0
+pytest>=8.0
