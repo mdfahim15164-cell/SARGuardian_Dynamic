@@ -175,6 +175,7 @@ def search_catalogue(
     flight_direction: str | None,
     max_results: int,
     timeout: int,
+    frame_coverage: str = "ALL",
 ) -> dict[str, Any]:
     params = {
         "dataset": "NISAR",
@@ -183,13 +184,16 @@ def search_catalogue(
         "start": f"{start_date.isoformat()}T00:00:00Z",
         "end": f"{end_date.isoformat()}T23:59:59Z",
         "output": "json",
-        "frameCoverage": "FULL",
         "maxResults": str(max_results),
     }
     if main_band_polarization:
         params["mainBandPolarization"] = main_band_polarization
     if flight_direction:
         params["flightDirection"] = flight_direction
+    if frame_coverage not in {"ALL", "FULL", "PARTIAL"}:
+        raise ValueError("frame-coverage must be ALL, FULL or PARTIAL.")
+    if frame_coverage != "ALL":
+        params["frameCoverage"] = frame_coverage
 
     query_url = f"{ASF_SEARCH_URL}?{urllib.parse.urlencode(params)}"
     request = urllib.request.Request(
@@ -242,7 +246,7 @@ def search_catalogue(
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
             "main_band_polarization": main_band_polarization,
-            "frame_coverage": "FULL",
+            "frame_coverage": frame_coverage,
             "flight_direction": flight_direction,
             "max_results": max_results,
             "endpoint": ASF_SEARCH_URL,
@@ -263,6 +267,7 @@ def main() -> int:
     parser.add_argument("--maturity", choices=("BETA", "PROVISIONAL", "ALL"), default="PROVISIONAL")
     parser.add_argument("--main-band-polarization", choices=("HH", "HH+HV", "HH+VV", "HH+HV+VH+VV", "VV", "VV+VH", "LH+LV", "RH+RV"))
     parser.add_argument("--flight-direction", choices=("ASCENDING", "DESCENDING"))
+    parser.add_argument("--frame-coverage", choices=("ALL", "FULL", "PARTIAL"), default="ALL")
     parser.add_argument("--max-results", type=int, default=500)
     parser.add_argument("--timeout", type=int, default=45)
     parser.add_argument("--out", required=True, help="Output JSON manifest path.")
@@ -277,7 +282,7 @@ def main() -> int:
         result = search_catalogue(
             aoi, args.start_date, args.end_date, args.maturity,
             args.main_band_polarization, args.flight_direction,
-            args.max_results, args.timeout,
+            args.max_results, args.timeout, args.frame_coverage,
         )
         output = Path(args.out)
         output.parent.mkdir(parents=True, exist_ok=True)
