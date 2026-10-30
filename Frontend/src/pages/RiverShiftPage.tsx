@@ -21,6 +21,7 @@ type CatalogueProduct = {
   bandwidth_mode?: string | null;
   polarization_code?: string | null;
   main_band_polarization?: string | null;
+  frame_coverage?: string | null;
   size_mb?: number | null;
 };
 
@@ -176,6 +177,7 @@ export function RiverShiftPage({ onHome }: Props) {
   const [maturity, setMaturity] = useState<'BETA' | 'PROVISIONAL' | 'ALL'>('PROVISIONAL');
   const [polarization, setPolarization] = useState('');
   const [direction, setDirection] = useState('');
+  const [frameCoverage, setFrameCoverage] = useState<'ALL' | 'FULL' | 'PARTIAL'>('ALL');
   const [catalogue, setCatalogue] = useState<CatalogueResponse | null>(null);
   const [catalogueBusy, setCatalogueBusy] = useState(false);
   const [catalogueError, setCatalogueError] = useState('');
@@ -204,6 +206,7 @@ export function RiverShiftPage({ onHome }: Props) {
           maturity,
           main_band_polarization: polarization || null,
           flight_direction: direction || null,
+          frame_coverage: frameCoverage,
           max_results: 100,
         }),
       });
@@ -360,6 +363,14 @@ export function RiverShiftPage({ onHome }: Props) {
                   <option value="">Any direction</option><option value="ASCENDING">Ascending</option><option value="DESCENDING">Descending</option>
                 </select>
               </label>
+              <label className="rs-field rs-field-full"><span>NISAR frame coverage</span>
+                <select value={frameCoverage} onChange={(event) => setFrameCoverage(event.target.value as typeof frameCoverage)}>
+                  <option value="ALL">All footprints (recommended for discovery)</option>
+                  <option value="FULL">Full frames only</option>
+                  <option value="PARTIAL">Partial frames only</option>
+                </select>
+                <small>FULL/PARTIAL refers to NISAR frame coverage, not the percentage of your AOI covered. That must be checked separately.</small>
+              </label>
             </div>
             <button className="rs-primary-button" type="submit" disabled={catalogueBusy}>
               {catalogueBusy ? 'Searching ASF…' : 'Search GCOV archive'}
@@ -374,13 +385,14 @@ export function RiverShiftPage({ onHome }: Props) {
               {catalogue.products.length > 0 && (
                 <div className="rs-table-wrap">
                   <table className="rs-table">
-                    <thead><tr><th>Acquisition</th><th>Track / frame</th><th>Mode / pol.</th><th>Maturity</th><th>Product</th></tr></thead>
+                    <thead><tr><th>Acquisition</th><th>Track / frame</th><th>Mode / pol.</th><th>Coverage</th><th>Maturity</th><th>Product</th></tr></thead>
                     <tbody>
                       {catalogue.products.map((product) => (
                         <tr key={product.granule_name}>
                           <td>{formatDate(product.start_time_utc)}</td>
                           <td>{product.flight_direction || '—'}<small>R{product.relative_orbit || '—'} · F{product.frame || '—'}</small></td>
                           <td>{product.bandwidth_mode || '—'}<small>{product.main_band_polarization || product.polarization_code || '—'}</small></td>
+                          <td>{product.frame_coverage || 'Unknown'}</td>
                           <td><span className={'rs-maturity rs-' + product.maturity.toLowerCase()}>{product.maturity}</span></td>
                           <td>{product.download_url
                             ? <a href={product.download_url} target="_blank" rel="noreferrer">Open ASF product ↗</a>
