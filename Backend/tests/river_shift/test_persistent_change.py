@@ -43,3 +43,26 @@ def test_persistence_fraction_must_be_majority():
             np.zeros((1, 1)), np.zeros((2, 1, 1)), pixel_area_m2=100,
             persistence_fraction=0.5,
         )
+
+
+def test_invalid_pre_event_state_cannot_become_erosion_or_deposition():
+    before = np.array([[0, 1]], dtype=bool)
+    before_valid = np.array([[False, True]])
+    post = np.array([[[1, 0]], [[1, 0]]], dtype=bool)
+    result = detect_persistent_change(
+        before,
+        post,
+        pixel_area_m2=10000,
+        before_valid=before_valid,
+        minimum_post_observations=2,
+    )
+    assert not result.erosion_candidate_mask[0, 0]
+    assert not result.deposition_candidate_mask[0, 0]
+    assert np.isnan(result.post_water_fraction[0, 0])
+
+
+def test_nan_in_water_stack_is_rejected_instead_of_becoming_land():
+    before = np.array([[0]], dtype=bool)
+    post = np.array([[[float("nan")]], [[1.0]]])
+    with pytest.raises(PersistentChangeError):
+        detect_persistent_change(before, post, pixel_area_m2=10000)
