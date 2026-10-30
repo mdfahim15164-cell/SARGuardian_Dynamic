@@ -51,6 +51,17 @@ def test_catalogue_does_not_guess_product_maturity():
     assert product.download_url is None
 
 
+def test_catalogue_accepts_explicit_maturity_enum():
+    product = river_shift._product({
+        "granuleName": GRANULE,
+        "processingLevel": "GCOV",
+        "dataMaturity": "PROVISIONAL",
+    })
+    assert product is not None
+    assert product.maturity == "PROVISIONAL"
+    assert product.download_url.endswith("/" + GRANULE + ".h5")
+
+
 def test_catalogue_excludes_non_gcov_record():
     result = river_shift._product({
         "granuleName": "NOT_A_GCOV_PRODUCT",
