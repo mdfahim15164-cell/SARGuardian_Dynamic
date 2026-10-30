@@ -13,9 +13,6 @@ This is the living acceptance checklist for the RiverShift owner. A checkbox is 
 - [x] Document challenge scorecard criteria as acceptance requirements.
 
 Evidence:
-- data-audit/candidate_sirajganj_jamuna_aoi.geojson
-- data-audit/README_SIRAJGANJ_CANDIDATE.md
-- .github/workflows/river-shift-gcov-audit.yml
 - Frontend/src/data/engineData.ts
 - Frontend/src/pages/RiverShiftPage.tsx
 - docs/RIVERSHIFT_ARCHITECTURE.md
@@ -36,7 +33,7 @@ Evidence:
 - [x] Add a manual GitHub Actions workflow for real ASF catalogue/footprint discovery without downloading data.
 - [x] Add a candidate Sirajganj–Kazipur search polygon, clearly marked NOT APPROVED.
 - [ ] Select and independently review the final Jamuna/Sirajganj study AOI and replace the candidate polygon.
-- [ ] Manually run the GitHub Actions GCOV audit workflow using the team-approved AOI and download its catalogue/feasibility artifacts.
+- [ ] Confirm the automatic or manually dispatched GitHub Actions GCOV audit completes with the team-approved AOI; download its catalogue/feasibility artifacts.
 - [ ] Review and save the actual ASF catalogue manifest for the selected AOI.
 - [ ] Confirm at least three comparable acquisitions exist for one event.
 - [ ] Confirm same maturity, frequency, diagonal term, orbit direction, relative track, bandwidth mode, processing type and compatible incidence geometry.
@@ -46,6 +43,9 @@ Evidence:
 
 Evidence expected:
 - data-audit/candidate_sirajganj_jamuna_aoi.geojson (candidate only)
+- data-audit/README_SIRAJGANJ_CANDIDATE.md
+- .github/workflows/river-shift-gcov-audit.yml
+- tools/river_shift/audit_gcov_acquisitions.py
 - data-audit/README_SIRAJGANJ_CANDIDATE.md
 - tools/river_shift/audit_gcov_acquisitions.py
 - .github/workflows/river-shift-gcov-audit.yml
@@ -129,6 +129,8 @@ Evidence expected:
 - [x] Reuse the existing FastAPI/worker/Drive architecture as the documented target design.
 - [x] Keep Earthdata and server keys out of VITE_ variables.
 - [ ] Design the RiverShift job request/result contract after the active Supabase project is connected and its current schema is reviewed.
+
+Supabase blocker: the connected-project list was empty during this implementation session. Do not create a handwritten SQL migration or apply schema changes until the team connects the intended Supabase project and confirms the target environment.
 - [ ] Add a dedicated Supabase migration for RiverShift jobs and result manifests.
 - [ ] Apply the migration to the correct active Supabase project after verifying project identity and backup.
 - [ ] Add owner-scoped backend endpoints and state transitions.
