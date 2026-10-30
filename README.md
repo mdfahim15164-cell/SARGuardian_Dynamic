@@ -22,6 +22,7 @@ RiverShift uses NASA-ISRO NISAR Level-2 GCOV as its primary radar product. Suppo
 - [RiverShift architecture](docs/RIVERSHIFT_ARCHITECTURE.md)
 - [RiverShift scoring acceptance matrix](docs/RIVERSHIFT_SCORING_ACCEPTANCE.md)
 - [RiverShift research decisions and limitations](docs/RIVERSHIFT_RESEARCH_DECISIONS.md)
+- [RiverShift implementation checklist](docs/RIVERSHIFT_IMPLEMENTATION_CHECKLIST.md)
 - [RiverShift scientific tools and reproducibility](tools/river_shift/README.md)
 
 ### Scientific task READMEs
