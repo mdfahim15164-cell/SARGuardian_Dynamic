@@ -12,6 +12,7 @@ This folder provides a first local scientific workflow:
 6. Screen persistent erosion/deposition candidates.
 7. Validate a binary water mask against an independently prepared reference raster.
 8. Measure signed bankline displacement along independently digitised transects.
+9. Audit whether at least three compatible GCOV dates cover the AOI sufficiently.
 
 This is not yet a cloud-dispatched, end-to-end job pipeline. Backend catalogue discovery is available separately. Large HDF5 processing should only be enabled in a worker after an AOI/product feasibility run and resource review.
 
@@ -44,7 +45,7 @@ The inspection script refuses GDAL versions older than 3.13.0 because the NISAR 
       morphology/
       validation/
       bankline-migration/
-      bankline-migration/
+      data-audit/
 
 Keep raw multi-gigabyte products outside Git. Commit scripts, small test fixtures, README files, output manifests and selected small GeoJSON previews only. Never commit Earthdata credentials or private user data.
 
@@ -58,12 +59,17 @@ Read these task-specific documents before each script:
 - README_06_run_morphology_analysis.md
 - README_07_validate_water_classification.md
 - README_08_measure_bankline_migration.md
-- README_08_measure_bankline_migration.md
+- README_09_audit_gcov_acquisitions.md
 
 ## Bankline transect measurement
-For a signed bankline movement measurement, use `measure_bankline_migration.py` only after independently digitising two dated banklines and creating user-oriented transects as WGS84 GeoJSON. The script reprojects them to a declared metric analysis CRS. Each transect must intersect each bankline exactly once; ambiguous braided-channel intersections are rejected. The sign convention is start-to-end along the transect and must be declared in `--positive-direction-label`.
+For a signed bankline movement measurement, digitise two dated banklines and user-oriented transects, then place all three GeoJSON files in the same projected metre CRS. GeoJSON is normally WGS84 under RFC 7946, so this workflow explicitly uses non-standard projected coordinates; document the CRS in `--input-crs` and do not publish those files as generic WGS84 GeoJSON. Each transect must intersect each bankline exactly once; ambiguous braided-channel intersections are rejected. The sign convention is start-to-end along the transect and must be declared in `--positive-direction-label`.
 
 See `README_08_measure_bankline_migration.md` and `river_shift/README_06_transects.md` before running it.
+
+### GCOV time-series feasibility audit
+Run `audit_gcov_acquisitions.py` against the ASF catalogue manifest before downloading or analysing products. It requires a minimum of three distinct acquisition dates, the same maturity/orbit/track/bandwidth/polarization/processing type, and sufficient footprint-union coverage of the same AOI on each date. The default minimum is 90%; the team can raise it when the AOI is smaller and full coverage is needed.
+
+The GitHub Actions workflow `.github/workflows/river-shift-gcov-audit.yml` runs public catalogue discovery and footprint feasibility without downloading imagery. Select the approved WKT and use its downloadable artefacts as the catalogue evidence package. The default Sirajganj–Kazipur AOI is explicitly a candidate and is not approved.
 
 ## Data-comparability gate
 Before pixel-wise comparison, verify:
@@ -101,6 +107,7 @@ Each transect must intersect each bankline exactly once. The transect start-to-e
 Every JSON result should retain:
 - Mission and product.
 - Exact granule names and checksums (download manifest).
+- Per-date AOI footprint coverage and the compatibility-group signature.
 - Observation dates.
 - Maturity, frequency and polarization term.
 - AOI.
