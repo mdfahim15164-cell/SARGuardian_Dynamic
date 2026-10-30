@@ -21,6 +21,18 @@ class InundationResult:
     valid_pixel_count: int
 
 
+def _binary_mask(value: np.ndarray, name: str) -> np.ndarray:
+    """Accept Boolean or finite 0/1 masks; reject NaN and ambiguous truthy values."""
+    array = np.asarray(value)
+    if array.dtype == np.bool_:
+        return array.astype(bool, copy=False)
+    if not np.issubdtype(array.dtype, np.number):
+        raise InundationError(f"{name} must contain Boolean or numeric 0/1 values.")
+    if not np.isfinite(array).all() or not np.isin(array, [0, 1]).all():
+        raise InundationError(f"{name} must contain only finite 0/1 values; encode no-data in a separate validity mask.")
+    return array.astype(bool)
+
+
 def calculate_inundation(
     baseline_water: np.ndarray,
     event_water: np.ndarray,
@@ -30,8 +42,8 @@ def calculate_inundation(
     event_valid: np.ndarray | None = None,
 ) -> InundationResult:
     """Calculate newly inundated area on a common, compatible raster grid."""
-    baseline = np.asarray(baseline_water, dtype=bool)
-    event = np.asarray(event_water, dtype=bool)
+    baseline = _binary_mask(baseline_water, "baseline_water")
+    event = _binary_mask(event_water, "event_water")
     if baseline.ndim != 2 or event.ndim != 2 or baseline.shape != event.shape:
         raise InundationError("baseline_water and event_water must be same-sized 2-D masks.")
     if not np.isfinite(pixel_area_m2) or pixel_area_m2 <= 0:
@@ -39,12 +51,12 @@ def calculate_inundation(
 
     common = np.ones(baseline.shape, dtype=bool)
     if baseline_valid is not None:
-        mask = np.asarray(baseline_valid, dtype=bool)
+        mask = _binary_mask(baseline_valid, "baseline_valid")
         if mask.shape != baseline.shape:
             raise InundationError("baseline_valid shape must match water masks.")
         common &= mask
     if event_valid is not None:
-        mask = np.asarray(event_valid, dtype=bool)
+        mask = _binary_mask(event_valid, "event_valid")
         if mask.shape != baseline.shape:
             raise InundationError("event_valid shape must match water masks.")
         common &= mask
