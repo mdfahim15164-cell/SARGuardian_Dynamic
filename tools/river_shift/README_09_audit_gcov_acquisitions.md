@@ -30,10 +30,10 @@ Frame coverage (FULL or PARTIAL) is a NISAR product-frame metadata field. It is 
     python audit_gcov_acquisitions.py --catalogue data-audit/gcov-catalogue-manifest.json --minimum-dates 3 --minimum-aoi-coverage-percent 90 --out data-audit/gcov-time-series-audit.json
 
 ## Live ASF workflow
-The repository now contains a manual GitHub Actions workflow:
+The repository contains a GitHub Actions workflow:
 .github/workflows/river-shift-gcov-audit.yml
 
-Open GitHub → Actions → RiverShift NISAR GCOV catalogue audit → Run workflow. The default AOI is an explicitly unapproved Sirajganj–Kazipur candidate; replace it with the team-approved WKT before using the results as project evidence. The workflow produces downloadable catalogue and coverage-audit JSON artifacts. No Earthdata download credential is required for the public catalogue query.
+It runs automatically when the GCOV catalogue/audit code or the workflow changes on the RiverShift feature branch. It can also be run manually from GitHub → Actions → RiverShift NISAR GCOV catalogue audit → Run workflow. For manual runs, replace the default candidate AOI with the team-approved WKT and choose the observation window/maturity. The default Sirajganj–Kazipur AOI is explicitly unapproved and must not be used as a final study boundary. The workflow uploads downloadable catalogue and footprint-audit JSON artefacts. No Earthdata download credential is needed for public catalogue search.
 
 ## Outputs
 - status: READY_FOR_THREE_DATE_SCREENING, INSUFFICIENT_COMPARABLE_ACQUISITIONS, or FOOTPRINT_DATA_INCOMPLETE.
