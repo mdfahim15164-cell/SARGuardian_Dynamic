@@ -11,6 +11,7 @@ This folder provides a first local scientific workflow:
 5. Screen flood-period new water coverage.
 6. Screen persistent erosion/deposition candidates.
 7. Validate a binary water mask against an independently prepared reference raster.
+8. Measure signed bankline displacement along independently digitised transects.
 
 This is not yet a cloud-dispatched, end-to-end job pipeline. Backend catalogue discovery is available separately. Large HDF5 processing should only be enabled in a worker after an AOI/product feasibility run and resource review.
 
@@ -42,6 +43,7 @@ The inspection script refuses GDAL versions older than 3.13.0 because the NISAR 
       flood/
       morphology/
       validation/
+      bankline-migration/
 
 Keep raw multi-gigabyte products outside Git. Commit scripts, small test fixtures, README files, output manifests and selected small GeoJSON previews only. Never commit Earthdata credentials or private user data.
 
@@ -54,6 +56,7 @@ Read these task-specific documents before each script:
 - README_05_run_flood_analysis.md
 - README_06_run_morphology_analysis.md
 - README_07_validate_water_classification.md
+- README_08_measure_bankline_migration.md
 
 ## Data-comparability gate
 Before pixel-wise comparison, verify:
@@ -80,6 +83,12 @@ For persistent deposition candidate:
     deposition = water_before AND land_post_1 AND land_post_2
 
 The erosion and deposition terms are candidate indicators. They do not establish flood causality or legal/field-confirmed land loss.
+
+For independently digitised banklines and oriented transects:
+    signed_displacement_m = after_chainage_m - before_chainage_m
+    mean_net_rate_m_per_year = signed_displacement_m / (elapsed_days / 365.25)
+
+Each transect must intersect each bankline exactly once. The transect start-to-end orientation determines the sign; ambiguous intersections are invalid.
 
 ## Reproducibility and provenance
 Every JSON result should retain:
