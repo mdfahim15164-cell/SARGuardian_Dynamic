@@ -8,7 +8,7 @@ from river_shift.science.data_access.catalog import CatalogRequestError, search_
 AOI = "POLYGON ((89.6 25.0, 89.8 25.0, 89.8 25.2, 89.6 25.2, 89.6 25.0))"
 
 
-def test_search_gcov_uses_gc ow_and_provisional():
+def test_search_gcov_uses_gcov_and_provisional():
     captured = {}
 
     class Product:
