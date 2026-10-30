@@ -15,7 +15,7 @@ NISAR time-series observations can reveal changes in river boundaries. This task
 - A user-declared positive-direction label that matches the orientation from each transect's first coordinate to its last coordinate.
 - Source mission/product and maturity metadata.
 
-All three GeoJSON files must use the same declared projected metre CRS. The input CRS is provided explicitly and is not inferred from GeoJSON, because RFC 7946 GeoJSON normally uses WGS84 coordinates.
+GeoJSON inputs follow RFC 7946 and use WGS84 coordinates. The script reprojects them into the explicitly declared metric analysis CRS before intersection and distance calculations.
 
 ## Method
 1. Load and validate the bankline and transect FeatureCollections.
@@ -32,9 +32,9 @@ All three GeoJSON files must use the same declared projected metre CRS. The inpu
 10. Export per-transect CSV, GeoJSON and a provenance-rich JSON summary.
 
 ## Reproduce
-Prepare three vector files in one projected metre CRS. Each transect must be digitised from the documented stable/landward side toward the documented channel side if positive means channelward.
+Prepare three vector GeoJSON files in EPSG:4326 (WGS84). The analysis CRS is selected separately as a projected metre CRS. Each transect must be digitised from the documented stable/landward side toward the documented channel side if positive means channelward.
 
-    python measure_bankline_migration.py --before-bankline data/vector/bankline_before.geojson --after-bankline data/vector/bankline_after.geojson --transects data/vector/transects.geojson --input-crs EPSG:32646 --before-date 2026-06-01 --after-date 2026-09-01 --positive-direction-label toward_channel --source-mission NISAR --source-product GCOV --maturity PROVISIONAL --out-dir results/bankline-migration
+    python measure_bankline_migration.py --before-bankline data/vector/bankline_before.geojson --after-bankline data/vector/bankline_after.geojson --transects data/vector/transects.geojson --analysis-crs EPSG:32646 --before-date 2026-06-01 --after-date 2026-09-01 --positive-direction-label toward_channel --source-mission NISAR --source-product GCOV --maturity PROVISIONAL --out-dir results/bankline-migration
 
 The dates, CRS, positive direction and file paths are illustrative. Use the actual CRS and dates associated with the chosen study area.
 
