@@ -16,7 +16,8 @@ RiverShift is an independent surface-change engine inside SARGuardian for mappin
 5. Local CLI or a future isolated GitHub Actions worker downloads the exact selected HDF5 products.
 6. GDAL inspects/extracts the required diagonal GCOV layers and clips them to the AOI.
 7. Scientific scripts produce GeoTIFF masks, GeoJSON polygons and JSON result manifests.
-8. Frontend imports and visualizes the real JSON/GeoJSON outputs.
+8. Reviewed banklines and transects can be measured by the signed migration script.
+9. Frontend imports and visualizes the real JSON/GeoJSON outputs.
 
 ## Existing vs new capability
 Existing platform components include React/Vite, FastAPI, Firebase identity, Supabase job metadata, GitHub Actions, Google Drive artifact storage, and NISAR GUNW/GOFF workflows. Existing GUNW/GOFF workflows are not repurposed as GCOV water classification.
@@ -27,6 +28,7 @@ New RiverShift deliverables in this PR:
 - Flood inundation screening.
 - Persistent erosion/deposition candidate screening.
 - Binary validation metrics.
+- Signed transect-based bankline displacement measurements using independently digitised banklines and user-oriented cross-sections.
 - Separate public RiverShift workspace route and scientific-report import UI.
 - Scientific READMEs and automated tests.
 
@@ -35,7 +37,7 @@ Not implemented in this milestone:
 - A new Supabase RiverShift job table/migration.
 - Private artifact upload/retention for RiverShift.
 - Live NISAR AOI imagery basemap.
-- Signed transect-based channel migration rates.
+- Automated NISAR bankline extraction and active-channel belt delineation; transect measurement requires reviewed input lines.
 - Operational flood depth or risk forecasting.
 
 ## Why the processing split matters
