@@ -44,6 +44,7 @@ The inspection script refuses GDAL versions older than 3.13.0 because the NISAR 
       morphology/
       validation/
       bankline-migration/
+      bankline-migration/
 
 Keep raw multi-gigabyte products outside Git. Commit scripts, small test fixtures, README files, output manifests and selected small GeoJSON previews only. Never commit Earthdata credentials or private user data.
 
@@ -57,6 +58,12 @@ Read these task-specific documents before each script:
 - README_06_run_morphology_analysis.md
 - README_07_validate_water_classification.md
 - README_08_measure_bankline_migration.md
+- README_08_measure_bankline_migration.md
+
+## Bankline transect measurement
+For a signed bankline movement measurement, use `measure_bankline_migration.py` only after independently digitising two dated banklines and creating user-oriented transects in one projected metre CRS. Each transect must intersect each bankline exactly once; ambiguous braided-channel intersections are rejected. The sign convention is start-to-end along the transect and must be declared in `--positive-direction-label`.
+
+See `README_08_measure_bankline_migration.md` and `river_shift/README_06_transects.md` before running it.
 
 ## Data-comparability gate
 Before pixel-wise comparison, verify:
