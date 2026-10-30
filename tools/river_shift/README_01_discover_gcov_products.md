@@ -15,12 +15,15 @@ Does the selected AOI have enough compatible NISAR GCOV acquisitions to support 
 - Maturity filter: PROVISIONAL, BETA, or ALL (ALL is for auditing; do not mix maturities in one time series).
 - Optional Frequency-A main-band polarization and orbit direction.
 - Maximum results from 1 to 2000.
+- Optional NISAR frame-coverage filter (ALL, FULL, PARTIAL; default ALL for discovery).
+
+Important: FULL/PARTIAL is a product-frame metadata field. It does not say how much of the user-drawn AOI is covered; README_09 calculates that percentage from actual footprints.
 
 ## Method
 1. Validate the WGS84 polygon and date order.
-2. Query the ASF Search API with dataset=NISAR, processingLevel=GCOV, intersectsWith, start and end.
-3. Read the actual granule name, acquisition timestamps, orbit direction, product URL, reported size, polarization metadata and track/frame fields when supplied.
-4. Infer maturity from the official ASF NISAR collection path. Unknown maturity is never silently relabelled.
+2. Query the ASF Search API with dataset=NISAR, processingLevel=GCOV, intersectsWith, start and end, requesting `output=json`.
+3. Parse the official 18-token single-acquisition GCOV granule name, including orbit, frame, bandwidth mode, polarization, timestamps, CRID and FULL/PARTIAL frame coverage; keep ASF-supplied footprint geometry for the separate AOI-coverage audit.
+4. Resolve maturity only from the official ASF collection URL/path or explicit collection metadata. A CRID token alone is not used to guess BETA/PROVISIONAL maturity.
 5. Write the unmodified catalogue identifiers into a JSON manifest.
 
 ## Reproduce
@@ -39,6 +42,9 @@ The coordinates above are a syntax example only, not a verified Jamuna AOI. Sele
 ## Acceptance tests
 - Invalid geometry and reversed dates fail before network access.
 - Product-level filter excludes non-GCOV results.
+- Official 18-token NISAR L2 GCOV product names are parsed, while malformed/pair-product names are rejected.
+- ASF request uses the documented `output=json` format.
+- FULL/PARTIAL frame coverage remains distinct from the user-defined AOI coverage percentage.
 - BETA and PROVISIONAL products remain separated.
 - The reported count equals the number of manifest products.
 - No-data and result-cap warnings are preserved.
