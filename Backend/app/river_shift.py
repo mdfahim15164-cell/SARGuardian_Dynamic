@@ -39,6 +39,8 @@ class RiverShiftCatalogRequest(BaseModel):
 class RiverShiftProduct(BaseModel):
     granule_name: str
     product_type: Literal["GCOV"] = "GCOV"
+    processing_type: str | None = None
+    crid: str | None = None
     maturity: Literal["BETA", "PROVISIONAL", "UNKNOWN"]
     download_url: str | None = None
     start_time_utc: str | None = None
@@ -153,6 +155,7 @@ def _granule_parts(name: str) -> dict[str, str | None]:
     ):
         return {}
     return {
+        "processing_type": parts[2],
         "cycle": parts[4],
         "relative_orbit": parts[5],
         "flight_direction": {"A": "ASCENDING", "D": "DESCENDING"}[parts[6]],
@@ -206,6 +209,8 @@ def _product(row: dict[str, Any]) -> RiverShiftProduct | None:
 
     return RiverShiftProduct(
         granule_name=name,
+        processing_type=parts["processing_type"],
+        crid=parts["crid"],
         maturity=maturity,
         download_url=url,
         start_time_utc=_first_string(row, ("startTime", "acquisitionDate")) or parts["acquisition_start_utc"],
