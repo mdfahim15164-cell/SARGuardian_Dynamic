@@ -2,56 +2,64 @@
 
 ## Purpose
 
-This folder implements the NISAR-first data boundary for RiverShift. It discovers GCOV scenes from ASF and reads a requested calibrated diagonal covariance layer from a NISAR GCOV HDF5 product.
+This folder provides RiverShift's NISAR-first data boundary: live ASF GCOV catalogue discovery, granule identity parsing, multi-date stack selection, HDF5 reading and candidate raster export.
 
 ## Why GCOV?
 
-NISAR's Level-2 GCOV product is radiometrically terrain-corrected backscatter and is explicitly intended to support inundation mapping, disturbance detection and crop-area delineation. RiverShift uses GCOV as its primary radar input rather than reusing the existing GUNW/GOFF displacement downloader.
+NISAR Level-2 GCOV provides radiometrically and terrain-corrected backscatter in gamma-naught power. It is suitable for SAR amplitude/inundation mapping and disturbance analysis. RiverShift uses GCOV as its primary radar input instead of reusing the existing Landslide GUNW/GOFF displacement pipeline.
 
-## Catalogue discovery
+## Data maturity
 
-`catalog.py` calls the supported `asf_search` API with:
-- `dataset="NISAR"`
-- `processingLevel="GCOV"`
-- `dataMaturity="PROVISIONAL"` by default
-- AOI polygon, date window and a bounded result count.
+The catalogue query accepts one explicit ASF maturity filter: PROVISIONAL or BETA. Per-granule reported maturity is stored separately from the query filter. If the archive does not report a per-product field, RiverShift leaves that field null and records that the request filter is the evidence. Never pretend the request filter is a granule property.
 
-The function returns catalogue metadata only. It does not download data and does not claim that a scene is scientifically comparable until the stack-selection checks are completed.
+Do not mix PROVISIONAL and BETA products in one comparison stack.
 
 ## HDF5 reader contract
 
-`gcov_reader.py` reads a diagonal covariance dataset under:
+gcov_reader.py reads a real-valued diagonal covariance dataset beneath:
 
-```
-/science/LSAR/GCOV/grids/frequencyA|frequencyB/
-  HHHH | HVHV | VVVV | VHVH | RHRH | RVRV
-```
+    /science/LSAR/GCOV/grids/frequencyA|frequencyB/
+      HHHH | HVHV | VVVV | VHVH | RHRH | RVRV
+      xCoordinates
+      yCoordinates
+      projection
 
-It reads the `xCoordinates`, `yCoordinates` and `projection` datasets from the same frequency grid. Coordinate arrays are used to check raster dimensions and regularity. The CRS is resolved from the projection value/attributes; it is never hard-coded to a Bangladesh UTM zone.
+Not all products contain all possible terms. Available frequencies and polarizations depend on the acquisition mode. The off-diagonal covariance terms are complex and are not accepted as simple intensity images.
 
-Only real-valued diagonal terms represent power/intensity. Complex off-diagonal covariance terms are not accepted by this reader.
+The reader checks dimensions, regular coordinate spacing, finite positive power, and numberOfLooks > 0 where that layer exists. It resolves CRS from the projection dataset or its CRS/CF attributes; it does not infer a Bangladesh UTM zone.
 
-The reader treats finite positive power as numerically valid and, when available, requires `numberOfLooks > 0`. It does not interpret undocumented mask bits.
+## Scene identity and stack compatibility
 
-## Units
+Read these task guides before comparing dates:
 
-GCOV diagonal terms are gamma-naught power in linear units. Convert to decibels only with:
+- Granule identity parser: scene_identity.README.md
+- Comparable-scene and grid-alignment gate: stack_selection.README.md
 
-```
-gamma0_db = 10 * log10(gamma0_power)
-```
+The parser extracts instrument band, processing type, cycle, relative orbit, direction, frame, mode, polarization mode, source, time and CRID from the documented NISAR name. Unrecognized names are not guessed.
 
-Gamma-naught and sigma-naught are not interchangeable. The product's `rtcGammaToSigmaFactor` can be applied in a separately specified conversion step when sigma-naught is explicitly required.
+The stack selector requires one maturity and common acquisition/processing identity. It records the cycle number but does not use it as a hard identity key. It then requires the downloaded HDF5 products to share frequency, covariance term, shape, CRS and x/y coordinate arrays before pixel-wise arithmetic.
 
-## Validation before use
+## Units and pixel area
 
-- Product must contain the requested GCOV frequency and diagonal term.
-- Raster shape must agree with x/y coordinate lengths.
-- Coordinates must be monotonic and regularly spaced.
-- Projection must resolve to a valid projected CRS.
-- Pixel area is calculated from coordinate spacing and CRS axis units.
-- Invalid/zero/negative power is excluded, not replaced with arbitrary values.
+GCOV diagonal covariance terms are gamma-naught power in linear units. Convert to decibels with:
 
-## Known limitations
+    gamma0_db = 10 * log10(gamma0_power)
 
-The reader currently loads the selected array into memory. Production processing must crop to the AOI/window or stream chunks for large granules. A real-product validation run is required before any published RiverShift metrics are treated as observations.
+Gamma-naught and sigma-naught are not interchangeable. If sigma-naught is required, use the product's rtcGammaToSigmaFactor according to its product definition.
+
+Pixel area is derived from source coordinate spacing and projected CRS axis units. It is not hard-coded to 10 m or 100 m². Frequency A products may have 10 m or 20 m spacing, and Frequency B products may have different spacing.
+
+## Candidate raster export
+
+Read raster_export.README.md. The current exporter creates a single-band mask:
+- 0 = valid non-water candidate.
+- 1 = open-water candidate.
+- 255 = NoData.
+
+The dataset is tagged as a candidate result and not an independently validated flood map.
+
+## Limitations
+
+- The current HDF5 reader loads the selected layer into memory. Large products need AOI-windowed or chunked reading.
+- The GCOV mask dataset exists, but its documented semantics have not yet been decoded into a RiverShift quality policy. Do not silently ignore this in a production validation run.
+- A real NISAR product test is still required. Synthetic fixtures verify software contracts, not real-scene accuracy.
