@@ -27,7 +27,13 @@ Evidence:
 - [x] Inspect native GCOV HDF5 subdatasets and available diagonal terms.
 - [x] Export a selected covariance term to an AOI-clipped COG.
 - [x] Document GDAL 3.13+, WGS84 AOI and gamma0 power contracts.
-- [ ] Select the final Jamuna/Sirajganj study AOI and commit its reviewed GeoJSON.
+- [x] Parse the official single-acquisition GCOV filename and preserve CRID/frame/orbit/polarization metadata.
+- [x] Use the documented ASF JSON response format and preserve unknown maturity instead of guessing.
+- [x] Add a multi-date compatibility and per-date AOI footprint coverage audit.
+- [x] Add a manual GitHub Actions workflow for a real ASF catalogue/footprint audit (no download or science claims).
+- [x] Add a candidate Sirajganj–Kazipur search polygon, clearly marked NOT APPROVED.
+- [ ] Select and independently review the final Jamuna/Sirajganj study AOI and replace the candidate polygon.
+- [ ] Manually run the GitHub Actions GCOV audit workflow using the team-approved AOI.
 - [ ] Query ASF and save an actual catalogue manifest for the selected AOI.
 - [ ] Confirm at least three comparable acquisitions exist for one event.
 - [ ] Confirm same maturity, frequency, diagonal term, orbit direction, relative track, frame, mode and compatible incidence geometry.
@@ -36,6 +42,11 @@ Evidence:
 - [ ] Download and archive selected GCOV files outside Git.
 
 Evidence expected:
+- data-audit/candidate_sirajganj_jamuna_aoi.geojson (candidate only)
+- data-audit/README_SIRAJGANJ_CANDIDATE.md
+- tools/river_shift/audit_gcov_acquisitions.py
+- .github/workflows/river-shift-gcov-audit.yml
+- downloaded workflow artefacts after a real catalogue run
 - data-audit/study_area.geojson
 - data-audit/gcov_catalogue.json
 - data-audit/acquisition_timeline.csv
@@ -67,7 +78,7 @@ Evidence expected:
 - [x] Add two-post-observation persistence screening for deposition candidates.
 - [x] Add candidate area and symmetric boundary-distance proxy.
 - [x] Add signed bankline measurement along user-oriented transects.
-- [x] Require WGS84 GeoJSON inputs and project them into a declared metric CRS.
+- [x] Require all vector inputs to use one explicitly declared projected metre CRS; transform result geometry to WGS84.
 - [x] Reject ambiguous transect/bankline intersections.
 - [x] Add an individual scientific README for morphology and transects.
 - [x] Add synthetic transect tests.
@@ -114,7 +125,7 @@ Evidence expected:
 
 - [x] Reuse the existing FastAPI/worker/Drive architecture as the documented target design.
 - [x] Keep Earthdata and server keys out of VITE_ variables.
-- [ ] Design the RiverShift job request/result contract.
+- [ ] Design the RiverShift job request/result contract after the active Supabase project is connected and its current schema is reviewed.
 - [ ] Add a dedicated Supabase migration for RiverShift jobs and result manifests.
 - [ ] Apply the migration to the correct active Supabase project after verifying project identity and backup.
 - [ ] Add owner-scoped backend endpoints and state transitions.
