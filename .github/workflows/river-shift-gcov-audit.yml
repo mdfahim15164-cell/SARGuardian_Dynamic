@@ -1,4 +1,4 @@
-name: RiverShift NISAR GCOV catalogue audit
+name: RiverShift NISAR GCOV CMR catalogue audit
 
 on:
   push:
@@ -82,7 +82,7 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check -r requirements.txt
 
-      - name: Validate inputs and discover official ASF GCOV products
+      - name: Validate inputs and discover official NISAR GCOV collections through CMR
         id: discover
         working-directory: tools/river_shift
         env:
@@ -145,8 +145,8 @@ jobs:
               python - "$catalogue" "$audit" <<'PY'
           import json, sys
           c=json.load(open(sys.argv[1], encoding="utf-8"))
-          print("- **ASF catalogue products:** {}".format(c.get("product_count")))
-          print("- **Maturity filter:** {}".format(c.get("maturity_filter")))
+          print("- **CMR catalogue granules:** {}".format(c.get("product_count")))
+          print("- **Maturity / CMR collection:** {}".format(c.get("maturity_filter")))
           print("- **Frame coverage filter:** {}".format(c.get("query", {}).get("frame_coverage")))
           if len(sys.argv)>2:
               a=json.load(open(sys.argv[2], encoding="utf-8"))
