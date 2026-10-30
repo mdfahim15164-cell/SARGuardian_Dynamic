@@ -14,6 +14,20 @@ class RasterExportError(ValueError):
     """Raised when a classification cannot be safely georeferenced."""
 
 
+def _binary_input(value: np.ndarray, name: str, shape: tuple[int, int]) -> np.ndarray:
+    array = np.asarray(value)
+    if array.shape != shape:
+        raise RasterExportError(f"{name} must match the GCOV raster shape.")
+    if array.dtype != np.bool_:
+        if (
+            not np.issubdtype(array.dtype, np.number)
+            or not np.isfinite(array).all()
+            or not np.isin(array, [0, 1]).all()
+        ):
+            raise RasterExportError(f"{name} must contain only Boolean or finite 0/1 values.")
+    return array.astype(bool)
+
+
 def write_water_candidate_geotiff(
     output_path: str | Path,
     gcov: GcovRaster,
@@ -23,16 +37,18 @@ def write_water_candidate_geotiff(
     threshold_db: float,
     classification_method: str,
 ) -> Path:
-    """Write a single-band UInt8 GeoTIFF: 0=non-water, 1=water candidate, 255=no-data."""
+    """Write a single-band UInt8 GeoTIFF: 0=non-water, 1=water candidate, 255=NoData."""
     try:
         import rasterio
     except ImportError as exc:
         raise RuntimeError("Install rasterio to export RiverShift GeoTIFF outputs.") from exc
 
-    water = np.asarray(water_mask, dtype=bool)
-    valid = np.asarray(valid_mask, dtype=bool)
-    if water.shape != gcov.shape or valid.shape != gcov.shape:
-        raise RasterExportError("water_mask and valid_mask must match the GCOV raster shape.")
+    water = _binary_input(water_mask, "water_mask", gcov.shape)
+    valid = _binary_input(valid_mask, "valid_mask", gcov.shape)
+    if not np.isfinite(threshold_db):
+        raise RasterExportError("threshold_db must be finite.")
+    if classification_method not in {"otsu", "fixed"}:
+        raise RasterExportError("classification_method must be 'otsu' or 'fixed'.")
 
     x = np.asarray(gcov.x_coordinates, dtype=np.float64)
     y = np.asarray(gcov.y_coordinates, dtype=np.float64)
@@ -71,7 +87,7 @@ def write_water_candidate_geotiff(
         "width": output.shape[1],
         "count": 1,
         "dtype": "uint8",
-        "crs": crs,
+        "crs": crs.to_wkt(),
         "transform": transform,
         "nodata": 255,
         "compress": "deflate",
