@@ -71,7 +71,7 @@ def test_explicit_maturity_enum_is_respected_without_collection_path():
 
 
 def test_search_uses_documented_asf_json_and_full_frame_filter(monkeypatch):
-    captured = {}
+    captured = {"urls": []}
 
     class FakeResponse:
         def __enter__(self):
@@ -82,7 +82,7 @@ def test_search_uses_documented_asf_json_and_full_frame_filter(monkeypatch):
             return json.dumps({"results": []}).encode("utf-8")
 
     def fake_urlopen(request, timeout):
-        captured["url"] = request.full_url
+        captured["urls"].append(request.full_url)
         captured["timeout"] = timeout
         return FakeResponse()
 
@@ -98,10 +98,13 @@ def test_search_uses_documented_asf_json_and_full_frame_filter(monkeypatch):
         20,
         "FULL",
     )
-    params = parse_qs(urlparse(captured["url"]).query)
+    assert len(captured["urls"]) == 2
+    params = parse_qs(urlparse(captured["urls"][0]).query)
+    broad_params = parse_qs(urlparse(captured["urls"][1]).query)
     assert params["output"] == ["json"]
     assert params["frameCoverage"] == ["FULL"]
     assert params["processingLevel"] == ["GCOV"]
+    assert "processingLevel" not in broad_params
 
 
 def test_validate_aoi_rejects_non_polygon():
