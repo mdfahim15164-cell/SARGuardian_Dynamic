@@ -34,14 +34,14 @@ on:
         description: Optional Frequency-A polarization filter
         required: false
         type: choice
-        options: ["", HH, HH+HV, HH+VV, HH+HV+VH+VV, VV, VV+VH, LH+LV, RH+RV]
-        default: ""
+        options: [Any, HH, HH+HV, HH+VV, HH+HV+VH+VV, VV, VV+VH, LH+LV, RH+RV]
+        default: Any
       flight_direction:
         description: Optional orbit direction filter
         required: false
         type: choice
-        options: ["", ASCENDING, DESCENDING]
-        default: ""
+        options: [Any, ASCENDING, DESCENDING]
+        default: Any
       minimum_aoi_coverage_percent:
         description: Minimum footprint coverage required on each acquisition date
         required: true
@@ -52,7 +52,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: river-shift-gcov-audit-\${{ github.ref }}
+  group: river-shift-gcov-audit-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -79,14 +79,14 @@ jobs:
         id: discover
         working-directory: tools/river_shift
         env:
-          AOI_WKT: \${{ inputs.aoi_wkt }}
-          START_DATE: \${{ inputs.start_date }}
-          END_DATE: \${{ inputs.end_date }}
-          MATURITY: \${{ inputs.maturity }}
-          FRAME_COVERAGE: \${{ inputs.frame_coverage }}
-          MAIN_BAND_POLARIZATION: \${{ inputs.main_band_polarization }}
-          FLIGHT_DIRECTION: \${{ inputs.flight_direction }}
-          MINIMUM_COVERAGE: \${{ inputs.minimum_aoi_coverage_percent }}
+          AOI_WKT: ${{ inputs.aoi_wkt }}
+          START_DATE: ${{ inputs.start_date }}
+          END_DATE: ${{ inputs.end_date }}
+          MATURITY: ${{ inputs.maturity }}
+          FRAME_COVERAGE: ${{ inputs.frame_coverage }}
+          MAIN_BAND_POLARIZATION: ${{ inputs.main_band_polarization }}
+          FLIGHT_DIRECTION: ${{ inputs.flight_direction }}
+          MINIMUM_COVERAGE: ${{ inputs.minimum_aoi_coverage_percent }}
         shell: bash
         run: |
           set -euo pipefail
@@ -101,13 +101,13 @@ jobs:
             --timeout 60
             --out "$RUNNER_TEMP/river-shift-audit/gcov-catalogue-manifest.json"
           )
-          if [[ -n "$MAIN_BAND_POLARIZATION" ]]; then
+          if [[ -n "$MAIN_BAND_POLARIZATION" && "$MAIN_BAND_POLARIZATION" != "Any" ]]; then
             args+=(--main-band-polarization "$MAIN_BAND_POLARIZATION")
           fi
-          if [[ -n "$FLIGHT_DIRECTION" ]]; then
+          if [[ -n "$FLIGHT_DIRECTION" && "$FLIGHT_DIRECTION" != "Any" ]]; then
             args+=(--flight-direction "$FLIGHT_DIRECTION")
           fi
-          python discover_gcov_products.py "\${args[@]}"
+          python discover_gcov_products.py "${args[@]}"
 
           python audit_gcov_acquisitions.py \
             --catalogue "$RUNNER_TEMP/river-shift-audit/gcov-catalogue-manifest.json" \
@@ -161,7 +161,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: river-shift-gcov-audit-\${{ github.run_id }}-\${{ github.run_attempt }}
-          path: \${{ runner.temp }}/river-shift-audit
+          name: river-shift-gcov-audit-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/river-shift-audit
           if-no-files-found: warn
           retention-days: 30
