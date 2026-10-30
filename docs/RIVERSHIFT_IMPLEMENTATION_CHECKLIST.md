@@ -20,12 +20,15 @@ This checklist is both a work tracker and a code-review acceptance gate. A check
 - [x] Explicit single data-maturity selection (PROVISIONAL or BETA).
 - [x] GCOV HDF5 diagonal-layer reader.
 - [x] Grid coordinate, projection, shape and valid-pixel checks.
+- [x] Granule identity parser for instrument band, orbit, frame, mode, polarization and CRID.
+- [x] Comparable-scene metadata gate and exact HDF5 grid-compatibility validator.
 - [x] Linear power to dB conversion and Otsu/fixed open-water candidate classifier.
 - [x] Event inundation area accounting with common validity mask.
 - [x] Multi-date persistent erosion/deposition candidate logic.
 - [x] Independent-reference confusion matrix, F1, IoU and threshold sensitivity helpers.
 - [x] GeoTIFF candidate-map exporter and JSON sidecar script.
 - [x] Scientific README beside each implemented task/script.
+- [x] Dedicated READMEs for backend catalogue API and frontend catalogue adapter.
 - [x] Synthetic software-contract tests for core calculations.
 - [x] Dedicated RiverShift frontend route, Firebase gating, catalogue search form and result table.
 - [ ] Build/lint/test checks pass on GitHub Actions (pending CI execution for this PR).
@@ -45,10 +48,10 @@ This checklist is both a work tracker and a code-review acceptance gate. A check
 
 - [ ] Implement secure authenticated GCOV file download and checksum verification.
 - [ ] Persist an immutable source-product manifest.
-- [ ] Implement a comparable-scene stack eligibility gate.
+- [x] Implement a comparable-scene stack eligibility gate.
 - [ ] Implement AOI-windowed/chunked HDF5 reading for large scenes.
 - [ ] Decode product mask/quality information according to the product specification.
-- [ ] Implement and test a documented grid-alignment policy.
+- [x] Implement and test a strict exact-grid compatibility gate; no implicit resampling.
 - [ ] Export AOI-clipped COG/GeoTIFF and GeoJSON layers with CRS, transform and NoData metadata.
 - [ ] Generate baseline/event flood extent from real GCOV scenes.
 - [ ] Generate persistent erosion/deposition candidates from post-recession scenes.
