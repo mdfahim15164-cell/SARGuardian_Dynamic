@@ -150,7 +150,7 @@ def test_search_uses_official_cmr_collection_short_name_and_umm_json(monkeypatch
     assert product["main_band_polarization"] == "HH+HV"
     assert product["footprint"]["type"] == "Polygon"
     assert product["size_mb"] == 100.0
-    assert result["query"]["response_format"] == "UMM-JSON 1.18.5"
+    assert result["query"]["response_format"] == "UMM-G 1.6.7"
 
 
 def test_validate_aoi_rejects_non_polygon():
