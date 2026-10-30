@@ -59,7 +59,7 @@ def write_water_candidate_geotiff(
         y = y[::-1]
 
     transform = Affine(dx, 0.0, float(x[0]) - dx / 2.0, 0.0, -dy, float(y[0]) + dy / 2.0)
-    crs = CRS.from_epsg(gcov.epsg)
+    crs = CRS.from_wkt(gcov.crs_wkt)
     if not crs.is_projected:
         raise RasterExportError("RiverShift export currently requires a projected GCOV grid.")
 
