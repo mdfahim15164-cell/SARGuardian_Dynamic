@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from pyproj import Transformer
 
 from river_shift.transects import measure_bankline_migration
 
@@ -22,12 +23,19 @@ def line_feature(coords, properties=None):
 
 
 def prepare_case(tmp_path, *, reverse_transects=False, multiple_before=False):
-    before_lines = [[0, 100], [100, 100]]
-    after_lines = [[0, 120], [100, 120]]
+    # Create a controlled 20 m shift in UTM, then export input GeoJSON as WGS84.
+    to_wgs84 = Transformer.from_crs("EPSG:32646", "EPSG:4326", always_xy=True)
+
+    def to_geojson_line(points):
+        return [list(to_wgs84.transform(x, y)) for x, y in points]
+
+    before_lines = to_geojson_line([[500000, 2700000], [500100, 2700000]])
+    after_lines = to_geojson_line([[500000, 2700020], [500100, 2700020]])
     if multiple_before:
+        second_before = to_geojson_line([[500000, 2700050], [500100, 2700050]])
         before_geometry = {
             "type": "MultiLineString",
-            "coordinates": [before_lines, [[0, 150], [100, 150]]],
+            "coordinates": [before_lines, second_before],
         }
     else:
         before_geometry = {"type": "LineString", "coordinates": before_lines}
@@ -40,8 +48,8 @@ def prepare_case(tmp_path, *, reverse_transects=False, multiple_before=False):
     ])
 
     transects = []
-    for index, x in enumerate([20, 40, 60], start=1):
-        coordinates = [[x, 0], [x, 200]]
+    for index, x in enumerate([500020, 500040, 500060], start=1):
+        coordinates = to_geojson_line([[x, 2699900], [x, 2700100]])
         if reverse_transects:
             coordinates.reverse()
         transects.append(line_feature(coordinates, {"transect_id": f"T{index:02d}"}))
@@ -55,7 +63,7 @@ def run_case(tmp_path, before, after, transects, *, crs="EPSG:32646", positive="
         before_bankline_path=str(before),
         after_bankline_path=str(after),
         transects_path=str(transects),
-        input_crs=crs,
+        analysis_crs=crs,
         before_date=before_date,
         after_date=after_date,
         positive_direction_label=positive,
@@ -72,10 +80,12 @@ def test_signed_migration_measures_after_minus_before_chainage(tmp_path):
     metrics = result["metrics"]
     assert metrics["valid_transect_count"] == 3
     assert metrics["invalid_transect_count"] == 0
-    assert metrics["mean_signed_displacement_m"] == pytest.approx(20.0)
-    assert metrics["median_signed_displacement_m"] == pytest.approx(20.0)
-    assert metrics["mean_net_rate_m_per_year"] == pytest.approx(20.0 / ((92 / 365.25)))
+    assert metrics["mean_signed_displacement_m"] == pytest.approx(20.0, abs=0.1)
+    assert metrics["median_signed_displacement_m"] == pytest.approx(20.0, abs=0.1)
+    assert metrics["mean_net_rate_m_per_year"] == pytest.approx(20.0 / (92 / 365.25), abs=0.2)
     assert result["inputs"]["positive_direction_label"] == "toward_channel"
+    assert result["inputs"]["input_crs"] == "EPSG:4326"
+    assert result["inputs"]["analysis_crs"] == "EPSG:32646"
     assert (tmp_path / "result" / "bankline_migration.csv").exists()
     assert (tmp_path / "result" / "bankline_migration_transects.geojson").exists()
     assert (tmp_path / "result" / "bankline_migration_summary.json").exists()
@@ -84,7 +94,7 @@ def test_signed_migration_measures_after_minus_before_chainage(tmp_path):
 def test_reversing_transect_direction_reverses_displacement_sign(tmp_path):
     before, after, transects = prepare_case(tmp_path, reverse_transects=True)
     result = run_case(tmp_path, before, after, transects, positive="toward_land")
-    assert result["metrics"]["mean_signed_displacement_m"] == pytest.approx(-20.0)
+    assert result["metrics"]["mean_signed_displacement_m"] == pytest.approx(-20.0, abs=0.1)
 
 
 def test_multiple_bankline_intersections_mark_transect_invalid(tmp_path):
@@ -96,9 +106,9 @@ def test_multiple_bankline_intersections_mark_transect_invalid(tmp_path):
     assert result["metrics"]["mean_signed_displacement_m"] is None
 
 
-def test_geographic_crs_is_rejected(tmp_path):
+def test_geographic_analysis_crs_is_rejected(tmp_path):
     before, after, transects = prepare_case(tmp_path)
-    with pytest.raises(ValueError, match="projected CRS"):
+    with pytest.raises(ValueError, match="projected analysis CRS"):
         run_case(tmp_path, before, after, transects, crs="EPSG:4326")
 
 
