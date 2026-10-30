@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/river-shift", tags=["RiverShift"])
 
-CMR_SEARCH_URL = "https://cmr.earthdata.nasa.gov/search/granules.umm_json_v1_18_5"
-CMR_ACCEPT = "application/vnd.nasa.cmr.umm_results+json; version=1.18.5"
+CMR_SEARCH_URL = "https://cmr.earthdata.nasa.gov/search/granules.umm_json_v1_6_7"
+CMR_ACCEPT = "application/vnd.nasa.cmr.umm_results+json; version=1.6.7"
 MAX_RESULTS = 200
 MAX_AOI_AREA_KM2 = 1_000.0
 TIMEOUT_SECONDS = 25
@@ -495,7 +495,7 @@ def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalo
             "frame_coverage": request.frame_coverage,
             "archive": "NASA CMR / ASF DAAC",
             "endpoint": CMR_SEARCH_URL,
-            "response_format": "UMM-JSON 1.18.5",
+            "response_format": "UMM-G 1.6.7",
             "reported_cmr_hits": total_hits,
             "collection_queries": query_records,
         },
