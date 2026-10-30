@@ -9,7 +9,8 @@ A pair of independently interpreted banklines can be compared along perpendicula
 ## Inputs
 - Before and after bankline FeatureCollections.
 - Transect FeatureCollection.
-- Explicit projected metre CRS.
+- WGS84 GeoJSON banklines and transects (longitude/latitude).
+- Explicit projected metre analysis CRS.
 - Two observation dates.
 - Explicit meaning of the transect start-to-end direction.
 - Provenance for the mission/product/maturity used to interpret the banklines.
@@ -32,8 +33,8 @@ Tests verify:
 - date ordering and direction label requirements.
 
 ## Acceptance / AI review
-- No CRS is inferred silently.
-- A geographic CRS is rejected.
+- Input GeoJSON follows EPSG:4326; the target analysis CRS is explicit.
+- A geographic analysis CRS is rejected; input GeoJSON is WGS84 and is projected internally.
 - The sign convention is explicit and retained in each output row.
 - Invalid transects do not contribute to summary statistics.
 - Rate is a two-observation mean net rate, not a long-term migration trend.
