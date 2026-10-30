@@ -23,8 +23,8 @@ def read_band(path: str | Path) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]
     with rasterio.open(path) as src:
         if src.count < 1:
             raise RasterContractError(f"Raster contains no bands: {path}")
-        raw = src.read(1, masked=True)
-        array = np.asarray(raw.filled(np.nan), dtype=np.float64)
+        raw = src.read(1)
+        array = np.asarray(raw, dtype=np.float64)
         valid = (src.dataset_mask() > 0) & np.isfinite(array)
         profile = src.profile.copy()
         profile["transform"] = src.transform
