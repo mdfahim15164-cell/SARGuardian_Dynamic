@@ -22,8 +22,9 @@ def parse_gcov_granule_identity(granule_name: str) -> dict[str, Any] | None:
     prefix, suffix = parts[:marker], parts[marker + 1:]
     if not prefix or prefix[0] != "NISAR" or "L2" not in prefix:
         return None
+    instrument_level = next((item for item in prefix if item in {"L1", "L2", "L3", "S1", "S2", "S3"}), None)
     processing_type = next((item for item in prefix if item in {"PR", "UR", "OD"}), None)
-    if processing_type is None or len(suffix) != 14:
+    if instrument_level is None or processing_type is None or len(suffix) != 14:
         return None
 
     (cycle, relative_orbit, direction, frame, mode, polarization, source,
@@ -44,6 +45,8 @@ def parse_gcov_granule_identity(granule_name: str) -> dict[str, Any] | None:
     if end_dt < start_dt or not crid or not re.fullmatch(r"\d{3}", counter):
         return None
     return {
+        "instrument_band": instrument_level[0],
+        "processing_level": instrument_level,
         "processing_type": processing_type,
         "cycle_number": cycle,
         "relative_orbit": relative_orbit,
