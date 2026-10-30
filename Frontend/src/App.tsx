@@ -4,8 +4,23 @@ import type { Engine } from './data/engineData';
 import { listDisplacementJobs } from './api/catalog';
 import { Home } from './pages/Home';
 import { LandslidePage } from '../landslide/ui/LandslidePage';
+import { RiverShiftPage } from '../river-shift/ui/RiverShiftPage';
 import { auth, firebaseConfigured, googleProvider, missingFirebaseConfig } from './firebase';
-import { isLandslideDisplacementRoute, isLandslideKnownPlaceAnalysisRoute, isLandslideResultsRoute, isLandslideRoute, LANDSLIDE_DISPLACEMENT_PATH, LANDSLIDE_KNOWN_PLACE_PATH, LANDSLIDE_PATH, LANDSLIDE_RESULTS_PATH, navigatePath, normalizePathname } from './routing';
+import {
+  isLandslideDisplacementRoute,
+  isLandslideKnownPlaceAnalysisRoute,
+  isLandslideResultsRoute,
+  isLandslideRoute,
+  isProtectedWorkspaceRoute,
+  isRiverShiftRoute,
+  LANDSLIDE_DISPLACEMENT_PATH,
+  LANDSLIDE_KNOWN_PLACE_PATH,
+  LANDSLIDE_PATH,
+  LANDSLIDE_RESULTS_PATH,
+  RIVER_SHIFT_PATH,
+  navigatePath,
+  normalizePathname,
+} from './routing';
 
 function App() {
   const [pathname, setPathname] = useState(() => normalizePathname(window.location.pathname));
@@ -54,9 +69,7 @@ function App() {
   }, [refreshDisplacementTaskState, user]);
 
   useEffect(() => {
-    // The account task may continue while the user visits Home. Only the map
-    // workspace is locked because changing its AOI during an active task would
-    // be misleading; the durable status route stays available.
+    // Only the Landslide map workspace is locked by an active displacement job.
     if (hasActiveDisplacementTask && pathname === LANDSLIDE_PATH) {
       navigateTo(LANDSLIDE_DISPLACEMENT_PATH);
     }
@@ -73,7 +86,7 @@ function App() {
       setAuthState(currentUser ? 'ready' : 'idle');
       setAuthError(null);
       const currentPath = pathnameRef.current;
-      if (!currentUser && isLandslideRoute(currentPath)) {
+      if (!currentUser && isProtectedWorkspaceRoute(currentPath)) {
         setPendingRoute(currentPath);
         setAuthModalOpen(true);
         navigateTo('/');
@@ -113,7 +126,7 @@ function App() {
       await signOut(auth);
       setPendingRoute(null);
       setAuthModalOpen(false);
-      if (pathname === '/landslide' || pathname.startsWith('/landslide/')) {
+      if (isProtectedWorkspaceRoute(pathname)) {
         navigateTo('/');
       }
     } catch (error: unknown) {
@@ -122,25 +135,27 @@ function App() {
   };
 
   const handleSelectEngine = (engine: Engine) => {
+    const nextRoute = engine.name === 'Landslide'
+      ? LANDSLIDE_PATH
+      : engine.name === 'RiverShift'
+        ? RIVER_SHIFT_PATH
+        : null;
+
     if (!user) {
-      if (engine.name === 'Landslide') {
-        setPendingRoute('/landslide');
-      } else {
-        setPendingRoute(null);
-      }
+      setPendingRoute(nextRoute);
       setAuthModalOpen(true);
       return;
     }
 
-    if (engine.name === 'Landslide') {
-      navigateTo('/landslide');
+    if (nextRoute) {
+      navigateTo(nextRoute);
       return;
     }
 
     setAuthModalOpen(false);
   };
 
-  if (isLandslideRoute(pathname)) {
+  if (isProtectedWorkspaceRoute(pathname)) {
     if (!user) {
       return (
         <Home
@@ -158,22 +173,35 @@ function App() {
       );
     }
 
-    return (
-      <LandslidePage
-        key={user.uid}
-        user={user}
-        onHome={() => navigateTo('/')}
-        isResultsPage={isLandslideResultsRoute(pathname)}
-        isDisplacementPage={isLandslideDisplacementRoute(pathname)}
-        isKnownPlaceAnalysisPage={isLandslideKnownPlaceAnalysisRoute(pathname)}
-        onDisplacements={() => navigateTo(LANDSLIDE_DISPLACEMENT_PATH)}
-        onKnownPlaceAnalysis={() => navigateTo(LANDSLIDE_KNOWN_PLACE_PATH)}
-        onResults={() => navigateTo(LANDSLIDE_RESULTS_PATH)}
-        onBackToMap={() => navigateTo(LANDSLIDE_PATH)}
-        onDisplacementTaskActivityChange={setHasActiveDisplacementTask}
-        onSignOut={handleSignOut}
-      />
-    );
+    if (isRiverShiftRoute(pathname)) {
+      return (
+        <RiverShiftPage
+          key={user.uid}
+          user={user}
+          onHome={() => navigateTo('/')}
+          onSignOut={handleSignOut}
+        />
+      );
+    }
+
+    if (isLandslideRoute(pathname)) {
+      return (
+        <LandslidePage
+          key={user.uid}
+          user={user}
+          onHome={() => navigateTo('/')}
+          isResultsPage={isLandslideResultsRoute(pathname)}
+          isDisplacementPage={isLandslideDisplacementRoute(pathname)}
+          isKnownPlaceAnalysisPage={isLandslideKnownPlaceAnalysisRoute(pathname)}
+          onDisplacements={() => navigateTo(LANDSLIDE_DISPLACEMENT_PATH)}
+          onKnownPlaceAnalysis={() => navigateTo(LANDSLIDE_KNOWN_PLACE_PATH)}
+          onResults={() => navigateTo(LANDSLIDE_RESULTS_PATH)}
+          onBackToMap={() => navigateTo(LANDSLIDE_PATH)}
+          onDisplacementTaskActivityChange={setHasActiveDisplacementTask}
+          onSignOut={handleSignOut}
+        />
+      );
+    }
   }
 
   return (
