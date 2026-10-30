@@ -16,7 +16,7 @@ class StackCompatibilityError(ValueError):
 
 
 STACK_IDENTITY_FIELDS = (
-    "processing_type", "relative_orbit", "flight_direction", "frame_number",
+    "instrument_band", "processing_level", "processing_type", "relative_orbit", "flight_direction", "frame_number",
     "acquisition_mode", "polarization_mode", "source_mode", "crid",
 )
 
