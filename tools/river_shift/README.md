@@ -34,8 +34,6 @@ GDAL is a native system dependency. Install and verify it independently:
 The inspection script refuses GDAL versions older than 3.13.0 because the NISAR HDF5 structure uses CF conventions supported by recent GDAL releases.
 
 ## Suggested project layout
-    data-audit/
-      jamuna_gcov.json
     data/
       raw/
       processed/
@@ -72,9 +70,9 @@ See `README_08_measure_bankline_migration.md` and `river_shift/README_06_transec
 ### GCOV time-series feasibility audit
 Run `audit_gcov_acquisitions.py` against the ASF catalogue manifest before downloading or analysing products. It requires a minimum of three distinct acquisition dates, the same maturity/orbit/track/bandwidth/polarization/processing type, and sufficient footprint-union coverage of the same AOI on each date. The default minimum is 90%; the team can raise it when the AOI is smaller and full coverage is needed.
 
-The GitHub Actions workflow `.github/workflows/river-shift-gcov-audit.yml` runs public catalogue discovery and footprint feasibility without downloading imagery. Select the team-approved WKT and use its downloadable artefacts as the catalogue evidence package. The default Sirajganj–Kazipur AOI is explicitly a candidate and is not approved.
+The GitHub Actions workflow `.github/workflows/river-shift-gcov-audit.yml` runs public catalogue discovery and footprint feasibility without downloading imagery. It runs automatically when the catalogue/audit code or audit workflow changes on this feature branch, and it can also be launched manually with a team-approved AOI/date window. The default Sirajganj–Kazipur AOI is explicitly a candidate and is not approved.
 
-The workflow is manual: a contributor must open GitHub Actions and click Run workflow. The source-code workflow definition does not itself mean that an ASF query has been run. Save its downloaded JSON artefacts and review the returned products before selecting a time series.
+A workflow definition is not itself evidence of an ASF query. Confirm a completed Actions run, download its catalogue and feasibility JSON artefacts, then review every selected date/footprint before starting a time series.
 
 ## Data-comparability gate
 Before pixel-wise comparison, verify:
