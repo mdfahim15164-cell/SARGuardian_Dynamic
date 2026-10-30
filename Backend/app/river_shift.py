@@ -174,13 +174,17 @@ def _product(row: dict[str, Any]) -> RiverShiftProduct | None:
     else:
         size_mb = None
 
+    direction = _first_string(row, ("flightDirection", "direction")) or parts["flight_direction"]
+    if direction:
+        direction = {"A": "ASCENDING", "D": "DESCENDING"}.get(direction.upper(), direction.upper())
+
     return RiverShiftProduct(
         granule_name=name,
         maturity=_maturity(url),
         download_url=url,
         start_time_utc=_first_string(row, ("startTime", "acquisitionDate")),
         stop_time_utc=_first_string(row, ("stopTime", "endTime")),
-        flight_direction=_first_string(row, ("flightDirection", "direction")) or parts["flight_direction"],
+        flight_direction=direction,
         relative_orbit=parts["relative_orbit"],
         cycle=parts["cycle"],
         frame=parts["frame"],
