@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - main
-      - feature/river-shift-engine-label
     paths:
       - "tools/river_shift/**"
       - ".github/workflows/river-shift-science-tests.yml"
