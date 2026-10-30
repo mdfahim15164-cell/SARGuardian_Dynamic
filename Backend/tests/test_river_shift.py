@@ -50,7 +50,7 @@ def test_catalogue_search_is_read_only_and_preserves_asf_products(monkeypatch):
         "NISAR_L2_GCOV_PROVISIONAL_V1/"
         + name + "/" + name + ".h5"
     )
-    payload = [{"granuleName": name, "processingLevel": "GCOV", "url": url}]
+    payload = {"results": [{"granuleName": name, "processingLevel": "GCOV", "url": url}]}
 
     class FakeResponse:
         def __enter__(self):
