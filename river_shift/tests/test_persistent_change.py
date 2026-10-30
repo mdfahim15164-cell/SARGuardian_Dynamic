@@ -10,7 +10,7 @@ from river_shift.science.morphology.persistent_change import (
 def test_persistent_erosion_and_deposition_candidates():
     before = np.array([[0, 1], [0, 1]], dtype=bool)
     post = np.array([
-        [[1, 0], [0, 1]],
+        [[1, 0], [0, 0]],
         [[1, 0], [0, 0]],
         [[1, 0], [0, 0]],
     ], dtype=bool)
