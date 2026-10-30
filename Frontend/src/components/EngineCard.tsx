@@ -54,7 +54,10 @@ export function EngineCard({ engine, onSelect }: EngineCardProps) {
       <span className="engine-wash" />
       <span className="engine-content">
         <span className="engine-icon"><EngineIcon type={engine.icon} /></span>
-        <span className="engine-name">{engine.name}</span>
+        <span className="engine-title-group">
+          <span className="engine-name">{engine.name}</span>
+          {engine.description && <span className="engine-description">{engine.description}</span>}
+        </span>
         <span className="engine-action">
           <span className={`engine-status ${engine.active ? 'active' : ''}`}>{engine.status}</span>
           <span className="arrow" aria-hidden="true">→</span>
