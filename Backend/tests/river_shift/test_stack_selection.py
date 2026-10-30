@@ -6,6 +6,7 @@ def _scene(name, *, relative_orbit="029", crid="P05000", maturity="PROVISIONAL")
         "granule_name": name,
         "data_maturity": maturity,
         "identity": {
+            "instrument_band": "L", "processing_level": "L2",
             "processing_type": "PR", "cycle_number": name[-3:],
             "relative_orbit": relative_orbit, "flight_direction": "ASCENDING",
             "frame_number": "010", "acquisition_mode": "0005",
@@ -46,3 +47,17 @@ def test_stack_selector_requires_complete_metadata():
     result = select_comparable_gcov_stack([scene, scene], requested_maturity="PROVISIONAL")
     assert result["eligible_count"] == 0
     assert result["status"] == "insufficient_data"
+
+
+def test_stack_selector_does_not_mix_l_band_and_s_band():
+    scenes = [
+        _scene("scene-L-1"),
+        _scene("scene-L-2"),
+        _scene("scene-S-3"),
+    ]
+    scenes[2]["identity"]["instrument_band"] = "S"
+    scenes[2]["identity"]["processing_level"] = "S2"
+    result = select_comparable_gcov_stack(scenes, requested_maturity="PROVISIONAL")
+    assert result["eligible_count"] == 2
+    assert result["comparison_key"]["instrument_band"] == "L"
+    assert len(result["excluded_scenes"]) == 1
