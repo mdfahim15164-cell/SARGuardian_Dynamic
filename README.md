@@ -35,7 +35,7 @@ Each script has its own method, inputs, outputs, validation requirements, limita
 - [06 River morphology screening](tools/river_shift/README_06_run_morphology_analysis.md)
 - [07 Water classification validation](tools/river_shift/README_07_validate_water_classification.md)
 - [08 Signed bankline migration](tools/river_shift/README_08_measure_bankline_migration.md)
-- [08 Signed bankline migration](tools/river_shift/README_08_measure_bankline_migration.md)
+- [09 GCOV time-series and AOI coverage audit](tools/river_shift/README_09_audit_gcov_acquisitions.md)
 
 ### Current implementation status
 Implemented in this feature branch:
@@ -46,12 +46,14 @@ Implemented in this feature branch:
 - Two-post-observation persistent erosion/deposition candidate screening.
 - Confusion matrix, precision, recall, F1, IoU, kappa and area-bias validation.
 - Signed transect-based bankline displacement measurement for reviewed bankline and transect inputs.
+- NISAR GCOV compatibility and AOI footprint coverage audit with a manual GitHub Actions workflow.
+- A candidate Sirajganj–Kazipur AOI, explicitly not approved as the final study polygon.
 - Separate public frontend route at /river-shift.
 - Catalogue, scientific-result and GeoJSON inspection UI.
 - Per-task and per-module scientific READMEs, signed bankline transect measurement, and regression tests.
 
 ### Not yet claimed
-A real Jamuna study event, available NISAR granule count, flood area, erosion area, accuracy score or measured migration rate has **not** been established by this code change. The first research milestone is a real AOI/GCOV data availability audit. The morphology boundary distance is a symmetric screening proxy. The separate signed transect tool requires independently digitised banklines and oriented transects; it is not an automatic NISAR bankline extractor. GCOV processing is currently run through local CLI tools; a durable cloud-dispatched RiverShift worker and Supabase job schema are future integration work.
+A real Jamuna study event, available NISAR granule count, flood area, erosion area, accuracy score or measured migration rate has **not** been established by this code change. The first research milestone is running the manual ASF GCOV audit workflow with a team-approved AOI. A candidate Sirajganj–Kazipur polygon is included only for initial feasibility testing. The morphology boundary distance is a symmetric screening proxy. The separate signed transect tool requires independently digitised banklines and oriented transects; it is not an automatic NISAR bankline extractor. GCOV processing is currently run through local CLI tools; a durable cloud-dispatched RiverShift worker and Supabase job schema are future integration work.
 
 ## Run the frontend
 From Frontend:
