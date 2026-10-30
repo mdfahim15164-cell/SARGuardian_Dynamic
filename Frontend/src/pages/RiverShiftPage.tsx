@@ -10,6 +10,8 @@ type Props = { onHome: () => void };
 type CatalogueProduct = {
   granule_name: string;
   product_type: 'GCOV';
+  processing_type?: string | null;
+  crid?: string | null;
   maturity: 'BETA' | 'PROVISIONAL' | 'UNKNOWN';
   download_url?: string | null;
   start_time_utc?: string | null;
@@ -397,7 +399,7 @@ export function RiverShiftPage({ onHome }: Props) {
                           <td>{product.download_url
                             ? <a href={product.download_url} target="_blank" rel="noreferrer">Open ASF product ↗</a>
                             : <span>URL unavailable</span>}
-                            <small>{product.granule_name}</small>
+                            <small>{product.processing_type || 'Processing type unknown'} · {product.crid || 'CRID unknown'}</small><small>{product.granule_name}</small>
                           </td>
                         </tr>
                       ))}
