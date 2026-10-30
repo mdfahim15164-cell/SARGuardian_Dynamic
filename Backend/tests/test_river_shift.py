@@ -25,7 +25,7 @@ def test_catalogue_product_extracts_gcove_provenance():
     assert product.product_type == "GCOV"
     assert product.maturity == "PROVISIONAL"
     assert product.relative_orbit == "149"
-    assert product.flight_direction == "A"
+    assert product.flight_direction == "ASCENDING"
 
 
 def test_catalogue_excludes_non_gcov_record():
