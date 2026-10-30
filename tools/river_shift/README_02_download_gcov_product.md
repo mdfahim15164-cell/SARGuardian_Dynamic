@@ -1,7 +1,7 @@
 # 02 · Download one exact NISAR GCOV product
 
 ## Purpose
-Download exactly one NISAR GCOV HDF5 granule already present in a reviewed ASF catalogue manifest. The script never searches for a different granule. When the ASF response omits a direct URL, it may reconstruct the canonical ASF HTTPS path only from a strict official GCOV granule name and explicit BETA/PROVISIONAL collection maturity.
+Download exactly one NISAR GCOV HDF5 granule already present in a reviewed NASA CMR UMM-JSON manifest. The script never searches for a different granule. When the ASF response omits a direct URL, it may reconstruct the canonical ASF HTTPS path only from a strict official GCOV granule name and explicit BETA/PROVISIONAL collection maturity.
 
 ## NASA challenge relevance
 The downloaded HDF5 file is the native NASA-ISRO NISAR observation used by the subsequent scientific scripts. Keeping the exact granule identifier and SHA-256 checksum provides traceability.
@@ -34,7 +34,7 @@ On Windows PowerShell, set the token in the terminal session using $env:EARTHDAT
 - JSON download receipt containing granule name, maturity, byte count, source host and SHA-256.
 
 ## Acceptance tests
-- The granule name must match exactly one manifest record.
+- The granule name must match exactly one CMR manifest record.
 - URL reconstruction is limited to exact official GCOV names with explicit BETA/PROVISIONAL maturity.
 - Unknown maturity never triggers URL construction or download.
 - URL reconstruction is permitted only for a strict official 18-token GCOV name with explicit BETA/PROVISIONAL collection maturity.
