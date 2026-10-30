@@ -4,11 +4,13 @@ This module discovers candidate products only. It does not download or process t
 """
 from __future__ import annotations
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Callable
 
 from shapely import wkt
 from shapely.geometry import Polygon
+
+from .scene_identity import parse_gcov_granule_identity
 
 
 ALLOWED_MATURITY = {"PROVISIONAL", "BETA"}
@@ -29,12 +31,14 @@ def _validate_request(
         geometry = wkt.loads(aoi_wkt)
     except Exception as exc:
         raise CatalogRequestError("AOI must be a valid WKT polygon.") from exc
-
     if not isinstance(geometry, Polygon) or geometry.is_empty or not geometry.is_valid:
         raise CatalogRequestError("AOI must be one valid, non-empty Polygon without self-intersections.")
     if geometry.area <= 0:
         raise CatalogRequestError("AOI polygon must have positive area.")
-    if geometry.bounds[0] < -180 or geometry.bounds[2] > 180 or geometry.bounds[1] < -90 or geometry.bounds[3] > 90:
+    if (
+        geometry.bounds[0] < -180 or geometry.bounds[2] > 180
+        or geometry.bounds[1] < -90 or geometry.bounds[3] > 90
+    ):
         raise CatalogRequestError("AOI must use WGS84 longitude/latitude coordinates.")
 
     try:
@@ -42,7 +46,6 @@ def _validate_request(
         end = date.fromisoformat(end_date) if isinstance(end_date, str) else end_date
     except (TypeError, ValueError) as exc:
         raise CatalogRequestError("Dates must be valid YYYY-MM-DD dates.") from exc
-
     if end < start:
         raise CatalogRequestError("end_date must not be earlier than start_date.")
     if (end - start).days > 366:
@@ -72,6 +75,49 @@ def _properties(product: Any) -> dict[str, Any]:
     return {}
 
 
+def _normalize_scene(product: Any, requested_maturity: str) -> dict[str, Any] | None:
+    props = _properties(product)
+    name = props.get("fileName") or props.get("granuleName") or props.get("sceneName")
+    if not name:
+        return None
+
+    granule_name = str(name)
+    identity = parse_gcov_granule_identity(granule_name)
+    reported_maturity = props.get("dataMaturity")
+    if isinstance(reported_maturity, str):
+        reported_maturity = reported_maturity.upper().strip() or None
+
+    start = _as_iso(props.get("startTime") or props.get("start"))
+    stop = _as_iso(props.get("stopTime") or props.get("endTime"))
+    if identity:
+        start = start or identity["start_time_utc"]
+        stop = stop or identity["stop_time_utc"]
+
+    return {
+        "granule_name": granule_name,
+        "product_id": props.get("sceneName") or props.get("granuleName"),
+        "product_type": props.get("processingLevel") or props.get("productType") or "GCOV",
+        "data_maturity": reported_maturity,
+        "catalogue_maturity_filter": requested_maturity,
+        "maturity_evidence": "product_metadata" if reported_maturity else "ASF query filter only",
+        "start_time": start,
+        "stop_time": stop,
+        "flight_direction": props.get("flightDirection") or (identity or {}).get("flight_direction"),
+        "relative_orbit": props.get("relativeOrbit") or props.get("relativeOrbitNumber") or (identity or {}).get("relative_orbit"),
+        "path_number": props.get("pathNumber"),
+        "frame_number": props.get("frameNumber") or (identity or {}).get("frame_number"),
+        "acquisition_mode": (identity or {}).get("acquisition_mode"),
+        "polarization": props.get("polarization"),
+        "polarization_mode": (identity or {}).get("polarization_mode"),
+        "frequency": props.get("frequency"),
+        "processing_type": (identity or {}).get("processing_type"),
+        "crid": props.get("crid") or (identity or {}).get("crid"),
+        "identity": identity,
+        "url": props.get("url"),
+        "size_bytes": props.get("bytes") or props.get("fileSize"),
+    }
+
+
 def search_gcov(
     aoi_wkt: str,
     start_date: date | str,
@@ -89,14 +135,13 @@ def search_gcov(
     geometry_wkt, start, end, maturity, max_results = _validate_request(
         aoi_wkt, start_date, end_date, maturity, max_results
     )
-
     if search_function is None:
         try:
             import asf_search as asf
         except ImportError as exc:
             raise RuntimeError(
                 "asf_search is required for live GCOV catalogue discovery. "
-                "Install river_shift/requirements-river-shift.txt."
+                "Install Backend/requirements-river-shift.txt."
             ) from exc
         search_function = asf.search
 
@@ -110,32 +155,16 @@ def search_gcov(
         maxResults=max_results,
     )
 
-    scenes: list[dict[str, Any]] = []
-    for product in results:
-        props = _properties(product)
-        name = props.get("fileName") or props.get("granuleName") or props.get("sceneName")
-        if not name:
-            continue
-        scenes.append({
-            "granule_name": str(name),
-            "product_id": props.get("sceneName") or props.get("granuleName"),
-            "product_type": props.get("processingLevel") or "GCOV",
-            "data_maturity": props.get("dataMaturity") or maturity,
-            "start_time": _as_iso(props.get("startTime") or props.get("start")),
-            "stop_time": _as_iso(props.get("stopTime") or props.get("endTime")),
-            "flight_direction": props.get("flightDirection"),
-            "path_number": props.get("pathNumber"),
-            "frame_number": props.get("frameNumber"),
-            "polarization": props.get("polarization"),
-            "url": props.get("url"),
-            "size_bytes": props.get("bytes"),
-        })
-
+    scenes = [
+        normalized
+        for product in results
+        if (normalized := _normalize_scene(product, maturity)) is not None
+    ]
     scenes.sort(key=lambda item: (item.get("start_time") or "", item["granule_name"]))
     return {
         "dataset": "NISAR",
         "processing_level": "GCOV",
-        "data_maturity": maturity,
+        "requested_maturity_filter": maturity,
         "aoi_wkt": geometry_wkt,
         "start_date": start.isoformat(),
         "end_date": end.isoformat(),
@@ -147,7 +176,8 @@ def search_gcov(
         "scientific_analysis_performed": False,
         "scenes": scenes,
         "warnings": [
+            "requested_maturity_filter is the ASF query filter; per-product data_maturity is shown only when ASF reports it.",
             "Catalogue presence does not prove that scenes form a comparable time series.",
-            "Check track, frame, frequency, polarization, processing maturity and CRID before change analysis.",
+            "Check track, frame, direction, mode, polarization, CRID and HDF5 grid before change analysis.",
         ],
     }
