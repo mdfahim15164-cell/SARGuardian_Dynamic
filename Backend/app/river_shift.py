@@ -421,7 +421,9 @@ def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalo
                     payload = json.loads(response.read().decode("utf-8"))
                     hits = int(response.headers.get("CMR-Hits", payload.get("hits", 0)))
             except urllib.error.HTTPError as exc:
-                raise HTTPException(status_code=502, detail=f"NASA CMR returned HTTP {exc.code}.") from None
+                detail = exc.read().decode("utf-8", errors="replace").strip()[:800]
+                suffix = f": {detail}" if detail else ""
+                raise HTTPException(status_code=502, detail=f"NASA CMR returned HTTP {exc.code}{suffix}") from None
             except (urllib.error.URLError, TimeoutError):
                 raise HTTPException(status_code=504, detail="NASA CMR request timed out or could not be reached.") from None
             except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
