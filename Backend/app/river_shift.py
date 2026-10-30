@@ -400,59 +400,69 @@ def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalo
 
     for maturity in maturities:
         collection_short_name = f"NISAR_L2_GCOV_{maturity}_V1"
-        params = {
-            "short_name": collection_short_name,
-            "temporal[]": temporal,
-            "polygon": polygon,
-            "page_size": str(request.max_results),
-            "page_num": "1",
-        }
-        url = f"{CMR_SEARCH_URL}?{urllib.parse.urlencode(params)}"
-        http_request = urllib.request.Request(
-            url,
-            headers={
-                "Accept": CMR_ACCEPT,
-                "User-Agent": "SARGuardian-RiverShift/0.2",
-            },
-        )
-        try:
-            with urllib.request.urlopen(http_request, timeout=TIMEOUT_SECONDS) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-                hits = int(response.headers.get("CMR-Hits", payload.get("hits", 0)))
-        except urllib.error.HTTPError as exc:
-            raise HTTPException(status_code=502, detail=f"NASA CMR returned HTTP {exc.code}.") from None
-        except (urllib.error.URLError, TimeoutError):
-            raise HTTPException(status_code=504, detail="NASA CMR request timed out or could not be reached.") from None
-        except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
-            raise HTTPException(status_code=502, detail="NASA CMR returned invalid UMM-JSON metadata.") from None
+        page_num = 1
+        collection_hits = 0
+        collection_records = 0
+        while len(products) < request.max_results:
+            params = {
+                "short_name": collection_short_name,
+                "temporal[]": temporal,
+                "polygon": polygon,
+                "page_size": str(request.max_results),
+                "page_num": str(page_num),
+            }
+            url = f"{CMR_SEARCH_URL}?{urllib.parse.urlencode(params)}"
+            http_request = urllib.request.Request(
+                url,
+                headers={"Accept": CMR_ACCEPT, "User-Agent": "SARGuardian-RiverShift/0.2"},
+            )
+            try:
+                with urllib.request.urlopen(http_request, timeout=TIMEOUT_SECONDS) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                    hits = int(response.headers.get("CMR-Hits", payload.get("hits", 0)))
+            except urllib.error.HTTPError as exc:
+                raise HTTPException(status_code=502, detail=f"NASA CMR returned HTTP {exc.code}.") from None
+            except (urllib.error.URLError, TimeoutError):
+                raise HTTPException(status_code=504, detail="NASA CMR request timed out or could not be reached.") from None
+            except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
+                raise HTTPException(status_code=502, detail="NASA CMR returned invalid UMM-JSON metadata.") from None
 
-        if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
-            raise HTTPException(status_code=502, detail="NASA CMR returned an unexpected UMM-JSON response shape.")
-        total_hits += hits
-        received = 0
-        for item in payload["items"]:
-            if not isinstance(item, dict):
-                continue
-            received += 1
-            product = _umm_product(item, maturity)
-            if product is None:
-                continue
-            if request.main_band_polarization and product.main_band_polarization != request.main_band_polarization:
-                continue
-            if request.flight_direction and product.flight_direction != request.flight_direction:
-                continue
-            if request.frame_coverage != "ALL" and product.frame_coverage != request.frame_coverage:
-                continue
-            products.append(product)
+            if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+                raise HTTPException(status_code=502, detail="NASA CMR returned an unexpected UMM-JSON response shape.")
+            if page_num == 1:
+                collection_hits = hits
+                total_hits += hits
+            page_items = payload["items"]
+            collection_records += len(page_items)
+            for item in page_items:
+                if not isinstance(item, dict):
+                    continue
+                product = _umm_product(item, maturity)
+                if product is None:
+                    continue
+                if request.main_band_polarization and product.main_band_polarization != request.main_band_polarization:
+                    continue
+                if request.flight_direction and product.flight_direction != request.flight_direction:
+                    continue
+                if request.frame_coverage != "ALL" and product.frame_coverage != request.frame_coverage:
+                    continue
+                products.append(product)
+                if len(products) >= request.max_results:
+                    break
+
+            query_records.append({
+                "collection_short_name": collection_short_name,
+                "request_url": url,
+                "page_num": page_num,
+                "cmr_reported_hits": collection_hits,
+                "records_received": collection_records,
+                "page_records_received": len(page_items),
+            })
+            if not page_items or collection_records >= collection_hits:
+                break
             if len(products) >= request.max_results:
                 break
-
-        query_records.append({
-            "collection_short_name": collection_short_name,
-            "request_url": url,
-            "cmr_reported_hits": hits,
-            "records_received": received,
-        })
+            page_num += 1
 
     products.sort(key=lambda item: str(item.start_time_utc or ""))
     warnings = [
