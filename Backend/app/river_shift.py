@@ -134,11 +134,15 @@ def _first_string(row: dict[str, Any], keys: tuple[str, ...]) -> str | None:
 
 
 def _maturity(url: str | None, row: dict[str, Any] | None = None) -> str:
+    if row:
+        for key in ("dataMaturity", "maturity"):
+            declared = row.get(key)
+            if isinstance(declared, str) and declared.strip().upper() in {"BETA", "PROVISIONAL"}:
+                return declared.strip().upper()
+
     values = [url or ""]
     if row:
-        values.extend(str(row.get(key, "")) for key in (
-            "collectionName", "collection", "shortName", "dataMaturity", "maturity",
-        ))
+        values.extend(str(row.get(key, "")) for key in ("collectionName", "collection", "shortName"))
     for value in values:
         value = value.upper()
         if "NISAR_L2_GCOV_PROVISIONAL_V1" in value:
