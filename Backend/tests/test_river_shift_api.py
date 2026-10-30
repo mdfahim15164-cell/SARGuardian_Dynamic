@@ -32,7 +32,7 @@ def test_river_shift_catalog_search_returns_real_adapter_contract(monkeypatch):
         return {
             "dataset": "NISAR",
             "processing_level": "GCOV",
-            "data_maturity": "PROVISIONAL",
+            "requested_maturity_filter": "PROVISIONAL",
             "result_count": 0,
             "scenes": [],
             "catalogue_only": True,
