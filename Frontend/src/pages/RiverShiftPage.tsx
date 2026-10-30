@@ -103,7 +103,7 @@ function metricLabel(key: string): string {
     invalid_transect_count: 'Invalid transects',
     transect_count: 'Total transects',
   };
-  return names[key] || key.replaceAll('_', ' ');
+  return names[key] || key.replace(/_/g, ' ');
 }
 
 function metricUnit(key: string): string {
@@ -135,7 +135,7 @@ function ReportPanel({ report }: { report: RiverShiftReport }) {
     <section className="rs-panel">
       <div className="rs-section-heading">
         <div><p className="rs-kicker">IMPORTED SCIENTIFIC RESULT</p><h2>{title}</h2></div>
-        <span className="rs-quality">{report.quality.status.replaceAll('_', ' ')}</span>
+        <span className="rs-quality">{report.quality.status.replace(/_/g, ' ')}</span>
       </div>
       <div className="rs-provenance">
         <span>Mission: <strong>{String(source.mission || 'Not stated')}</strong></span>
@@ -289,7 +289,7 @@ export function RiverShiftPage({ onHome }: Props) {
     return () => { cancelled = true; };
   }, [geoJSON]);
 
-  const resultType = useMemo(() => report ? report.analysis_type.replaceAll('_', ' ') : 'No result imported', [report]);
+  const resultType = useMemo(() => report ? report.analysis_type.replace(/_/g, ' ') : 'No result imported', [report]);
 
   return (
     <main className="river-shift-page">
