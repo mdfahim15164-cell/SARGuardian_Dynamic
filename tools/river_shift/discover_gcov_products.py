@@ -398,7 +398,9 @@ def search_catalogue(
                 payload = json.loads(response.read().decode("utf-8"))
                 cmr_hits = int(response.headers.get("CMR-Hits", payload.get("hits", 0)))
         except urllib.error.HTTPError as exc:
-            raise RuntimeError(f"NASA CMR returned HTTP {exc.code}.") from None
+            detail = exc.read().decode("utf-8", errors="replace").strip()[:1200]
+            suffix = f": {detail}" if detail else ""
+            raise RuntimeError(f"NASA CMR returned HTTP {exc.code}{suffix}") from None
         except (urllib.error.URLError, TimeoutError):
             raise RuntimeError("NASA CMR request could not be reached before the timeout.") from None
         except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
