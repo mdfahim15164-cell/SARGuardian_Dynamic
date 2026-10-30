@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
 import type { RiverShiftGeoJSON, RiverShiftReport } from '../riverShift/manifest';
 import { parseRiverShiftGeoJSON, parseRiverShiftReport } from '../riverShift/manifest';
@@ -173,7 +174,7 @@ export function RiverShiftPage({ onHome }: Props) {
   const mapElement = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
 
-  const searchCatalogue = async (event: React.FormEvent<HTMLFormElement>) => {
+  const searchCatalogue = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setCatalogueError('');
     setCatalogue(null);
@@ -254,7 +255,7 @@ export function RiverShiftPage({ onHome }: Props) {
       mapInstance.current = map;
       map.data.forEach((feature) => map.data.remove(feature));
       if (geoJSON) {
-        map.data.addGeoJson(geoJSON as unknown as google.maps.Data.FeatureCollection);
+        map.data.addGeoJson(geoJSON as unknown as object);
         map.data.setStyle((feature) => {
           const name = String(feature.getProperty('class') || feature.getProperty('change_type') || '').toLowerCase();
           const colour = name.includes('erosion') ? '#f07462'
