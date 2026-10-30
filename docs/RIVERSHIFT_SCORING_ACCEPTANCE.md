@@ -30,6 +30,7 @@ Evidence:
 - Synthetic algorithm tests plus independent real-world validation.
 Acceptance:
 - Time-series inputs meet acquisition comparability requirements.
+- Signed bankline displacement uses reviewed banklines, a declared transect direction, and rejects ambiguous multiple intersections.
 - CRS, grid, units, maturity, frequency and polarization are recorded.
 - Report confusion matrix, precision, recall, F1 and IoU.
 - Label candidate morphology changes as candidates until independently corroborated.
@@ -105,7 +106,8 @@ Provide these files/links in the repository:
 - docs/RIVERSHIFT_SCORING_ACCEPTANCE.md
 - docs/RIVERSHIFT_RESEARCH_DECISIONS.md
 - tools/river_shift/README.md
-- README_01 through README_07, each immediately preceding its script's task.
+- README_01 through README_08, each immediately preceding its script's task.
+- One scientific README for every calculation module, including `river_shift/README_06_transects.md`.
 - Reproducible commands, tests, real case-study outputs, provenance manifest and validation report.
 - README_08 for signed bankline migration, plus a module README for transect calculations.
 
@@ -115,5 +117,6 @@ Do not mark RiverShift ready for final judging until:
 2. At least three comparable acquisition dates are downloaded and processed.
 3. Flood and morphology outputs are produced from the real products.
 4. Independent reference validation is documented.
+5. Where bankline movement is claimed, dated banklines and transects are independently reviewed and signed displacement results are reproducible.
 5. The UI shows the real outputs with provenance and caveats.
 6. Public repository and official project page are complete.
