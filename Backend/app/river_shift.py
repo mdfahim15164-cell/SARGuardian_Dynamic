@@ -136,7 +136,9 @@ def _first_string(row: dict[str, Any], keys: tuple[str, ...]) -> str | None:
 def _maturity(url: str | None, row: dict[str, Any] | None = None) -> str:
     values = [url or ""]
     if row:
-        values.extend(str(row.get(key, "")) for key in ("collectionName", "collection", "shortName"))
+        values.extend(str(row.get(key, "")) for key in (
+            "collectionName", "collection", "shortName", "dataMaturity", "maturity",
+        ))
     for value in values:
         value = value.upper()
         if "NISAR_L2_GCOV_PROVISIONAL_V1" in value:
