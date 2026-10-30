@@ -69,13 +69,18 @@ def classify_open_water(
     minimum_valid_pixels: int = 100,
 ) -> WaterClassification:
     """Classify low-backscatter open-water candidates from linear GCOV power."""
+    if not isinstance(minimum_valid_pixels, int) or minimum_valid_pixels < 2:
+        raise WaterClassificationError("minimum_valid_pixels must be an integer of at least 2.")
     db = power_to_db(power)
     valid = np.isfinite(db)
     if valid_mask is not None:
-        external = np.asarray(valid_mask, dtype=bool)
+        external = np.asarray(valid_mask)
         if external.shape != db.shape:
             raise WaterClassificationError("valid_mask shape must match power.")
-        valid &= external
+        if external.dtype != np.bool_:
+            if not np.issubdtype(external.dtype, np.number) or not np.isfinite(external).all() or not np.isin(external, [0, 1]).all():
+                raise WaterClassificationError("valid_mask must contain only Boolean or finite 0/1 values.")
+        valid &= external.astype(bool)
     count = int(valid.sum())
     if count < minimum_valid_pixels:
         raise WaterClassificationError(
