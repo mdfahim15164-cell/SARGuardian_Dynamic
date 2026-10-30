@@ -32,7 +32,7 @@ class RiverShiftCatalogRequest(BaseModel):
     maturity: Maturity = "PROVISIONAL"
     main_band_polarization: Polarization | None = None
     flight_direction: FlightDirection | None = None
-    frame_coverage: FrameCoverage = "FULL"
+    frame_coverage: FrameCoverage = "ALL"
     max_results: int = Field(default=100, ge=1, le=MAX_RESULTS)
 
 
