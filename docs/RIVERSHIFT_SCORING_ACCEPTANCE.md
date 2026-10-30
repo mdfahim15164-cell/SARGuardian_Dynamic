@@ -30,6 +30,7 @@ Evidence:
 - Synthetic algorithm tests plus independent real-world validation.
 Acceptance:
 - Time-series inputs meet acquisition comparability requirements.
+- At least three distinct acquisition dates meet the same GCOV maturity/orbit/track/bandwidth/polarization/processing signature and per-date AOI footprint threshold.
 - Signed bankline displacement uses reviewed WGS84 GeoJSON banklines, a projected metre analysis CRS, a declared transect direction, and rejects ambiguous multiple intersections.
 - CRS, grid, units, maturity, frequency and polarization are recorded.
 - Report confusion matrix, precision, recall, F1 and IoU.
@@ -106,8 +107,9 @@ Provide these files/links in the repository:
 - docs/RIVERSHIFT_SCORING_ACCEPTANCE.md
 - docs/RIVERSHIFT_RESEARCH_DECISIONS.md
 - tools/river_shift/README.md
-- README_01 through README_08, each immediately preceding its script's task.
-- One scientific README for every calculation module, including `river_shift/README_06_transects.md`.
+- README_01 through README_09, each immediately preceding its script's task.
+- One scientific README for every calculation module, including `river_shift/README_06_transects.md` and `river_shift/README_07_catalogue_audit.md`.
+- A real ASF catalogue manifest and a footprint feasibility report with per-date AOI coverage.
 - Reproducible commands, tests, real case-study outputs, provenance manifest and validation report.
 - README_08 for signed bankline migration, plus a module README for transect calculations.
 
@@ -118,5 +120,5 @@ Do not mark RiverShift ready for final judging until:
 3. Flood and morphology outputs are produced from the real products.
 4. Independent reference validation is documented.
 5. Where bankline movement is claimed, dated banklines and transects are independently reviewed and signed displacement results are reproducible.
-5. The UI shows the real outputs with provenance and caveats.
-6. Public repository and official project page are complete.
+6. The UI shows the real outputs with provenance and caveats.
+7. Public repository and official project page are complete.
