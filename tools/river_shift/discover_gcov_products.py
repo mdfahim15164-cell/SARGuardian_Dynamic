@@ -117,6 +117,10 @@ def normalize_product(row: dict[str, Any]) -> dict[str, Any] | None:
     else:
         size_mb = None
 
+    direction = first_string(row, ("flightDirection", "direction")) or metadata["orbit_direction"]
+    if direction:
+        direction = {"A": "ASCENDING", "D": "DESCENDING"}.get(direction.upper(), direction.upper())
+
     return {
         "granule_name": name,
         "product": "GCOV",
@@ -124,7 +128,7 @@ def normalize_product(row: dict[str, Any]) -> dict[str, Any] | None:
         "download_url": url,
         "start_time_utc": start_time,
         "stop_time_utc": stop_time,
-        "flight_direction": first_string(row, ("flightDirection", "direction")) or metadata["orbit_direction"],
+        "flight_direction": direction,
         "main_band_polarization": first_string(row, ("mainBandPolarization", "polarization")),
         "size_mb": size_mb,
         **metadata,
