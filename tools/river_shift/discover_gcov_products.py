@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -70,27 +69,42 @@ def detect_maturity(url: str | None, row: dict[str, Any]) -> str:
 
 
 def parse_granule_metadata(name: str) -> dict[str, str | None]:
-    parts = name.split("_")
-    if len(parts) < 13 or parts[0] != "NISAR" or "GCOV" not in parts[:5]:
-        return {
-            "cycle": None,
-            "relative_orbit": None,
-            "orbit_direction": None,
-            "frame": None,
-            "bandwidth_mode": None,
-            "polarization_code": None,
-            "acquisition_start_utc": None,
-            "acquisition_end_utc": None,
-        }
+    """Parse the official 18-token NISAR single-acquisition GCOV filename."""
+    base_name = name.removesuffix(".h5")
+    parts = base_name.split("_")
+    if (
+        len(parts) != 18
+        or parts[0] != "NISAR"
+        or parts[1] != "L2"
+        or parts[2] not in {"PR", "UR", "OD"}
+        or parts[3] != "GCOV"
+        or parts[6] not in {"A", "D"}
+        or parts[15] not in {"F", "P"}
+    ):
+        raise ValueError(f"Not a supported NISAR L2 GCOV granule name: {name}")
+
+    try:
+        start = datetime.strptime(parts[11], "%Y%m%dT%H%M%S")
+        end = datetime.strptime(parts[12], "%Y%m%dT%H%M%S")
+    except ValueError:
+        raise ValueError(f"Invalid acquisition timestamp in GCOV granule name: {name}") from None
+    if end < start:
+        raise ValueError(f"GCOV acquisition end precedes acquisition start: {name}")
+
     return {
-        "cycle": parts[4] if len(parts) > 4 else None,
-        "relative_orbit": parts[5] if len(parts) > 5 else None,
-        "orbit_direction": parts[6] if len(parts) > 6 else None,
-        "frame": parts[7] if len(parts) > 7 else None,
-        "bandwidth_mode": parts[8] if len(parts) > 8 else None,
-        "polarization_code": parts[9] if len(parts) > 9 else None,
-        "acquisition_start_utc": parts[11] if len(parts) > 11 else None,
-        "acquisition_end_utc": parts[12] if len(parts) > 12 else None,
+        "cycle": parts[4],
+        "relative_orbit": parts[5],
+        "orbit_direction": parts[6],
+        "frame": parts[7],
+        "bandwidth_mode": parts[8],
+        "polarization_code": parts[9],
+        "acquisition_start_utc": parts[11],
+        "acquisition_end_utc": parts[12],
+        "crid": parts[13],
+        "orbit_accuracy": parts[14],
+        "frame_coverage": "FULL" if parts[15] == "F" else "PARTIAL",
+        "science_data_system": parts[16],
+        "product_counter": parts[17],
     }
 
 
@@ -100,10 +114,22 @@ def normalize_product(row: dict[str, Any]) -> dict[str, Any] | None:
     if not name or (product_level and product_level.upper() != "GCOV"):
         return None
 
+    name = name.removesuffix(".h5")
     url = first_string(row, ("url", "downloadUrl", "downloadURL", "productUrl", "product_url"))
     metadata = parse_granule_metadata(name)
-    start_time = first_string(row, ("startTime", "acquisitionDate", "start_date"))
-    stop_time = first_string(row, ("stopTime", "endTime", "stop_date"))
+    maturity = detect_maturity(url, row)
+    collection = first_string(row, ("collectionName", "collection", "shortName"))
+    if maturity == "UNKNOWN" and collection:
+        match = MATURITY_PATTERN.search(collection)
+        if match:
+            maturity = match.group(1).upper()
+    if not url and maturity in {"BETA", "PROVISIONAL"}:
+        url = (
+            "https://nisar.asf.earthdatacloud.nasa.gov/NISAR/"
+            f"NISAR_L2_GCOV_{maturity}_V1/{name}/{name}.h5"
+        )
+    start_time = first_string(row, ("startTime", "acquisitionDate", "start_date")) or metadata["acquisition_start_utc"]
+    stop_time = first_string(row, ("stopTime", "endTime", "stop_date")) or metadata["acquisition_end_utc"]
     size = row.get("sizeMB")
     if isinstance(size, dict):
         sizes = [
@@ -124,12 +150,17 @@ def normalize_product(row: dict[str, Any]) -> dict[str, Any] | None:
     return {
         "granule_name": name,
         "product": "GCOV",
-        "maturity": detect_maturity(url, row),
+        "maturity": maturity,
         "download_url": url,
         "start_time_utc": start_time,
         "stop_time_utc": stop_time,
         "flight_direction": direction,
-        "main_band_polarization": first_string(row, ("mainBandPolarization", "polarization")),
+        "frame_coverage": first_string(row, ("frameCoverage", "coverage")) or metadata["frame_coverage"],
+        "footprint": row.get("geometry") or row.get("footprint"),
+        "main_band_polarization": first_string(row, ("mainBandPolarization", "polarization")) or {
+            "SH": "HH", "SV": "VV", "DH": "HH+HV", "DV": "VV+VH",
+            "CL": "LH+LV", "CR": "RH+RV",
+        }.get((metadata["polarization_code"] or "")[:2]),
         "size_mb": size_mb,
         **metadata,
     }
@@ -151,7 +182,8 @@ def search_catalogue(
         "intersectsWith": aoi_wkt,
         "start": f"{start_date.isoformat()}T00:00:00Z",
         "end": f"{end_date.isoformat()}T23:59:59Z",
-        "output": "jsonlite",
+        "output": "json",
+        "frameCoverage": "FULL",
         "maxResults": str(max_results),
     }
     if main_band_polarization:
@@ -210,9 +242,11 @@ def search_catalogue(
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
             "main_band_polarization": main_band_polarization,
+            "frame_coverage": "FULL",
             "flight_direction": flight_direction,
             "max_results": max_results,
             "endpoint": ASF_SEARCH_URL,
+            "response_format": "json",
         },
         "raw_record_count": len(raw_rows),
         "product_count": len(products),
