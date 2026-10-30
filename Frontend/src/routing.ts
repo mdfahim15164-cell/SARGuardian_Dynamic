@@ -36,3 +36,14 @@ export function navigatePath(
   }
   return normalizedPath;
 }
+
+
+export const RIVER_SHIFT_PATH = '/river-shift';
+
+export function isRiverShiftRoute(pathname: string): boolean {
+  return normalizePathname(pathname) === RIVER_SHIFT_PATH;
+}
+
+export function isProtectedWorkspaceRoute(pathname: string): boolean {
+  return isLandslideRoute(pathname) || isRiverShiftRoute(pathname);
+}
