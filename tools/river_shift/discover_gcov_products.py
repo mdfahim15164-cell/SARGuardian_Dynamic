@@ -60,7 +60,10 @@ def first_string(row: dict[str, Any], keys: tuple[str, ...]) -> str | None:
 
 def detect_maturity(url: str | None, row: dict[str, Any]) -> str:
     values = [url or ""]
-    values.extend(str(row.get(key, "")) for key in ("granuleName", "fileName", "productName", "collectionName"))
+    values.extend(str(row.get(key, "")) for key in (
+        "granuleName", "fileName", "productName", "collectionName",
+        "collection", "shortName", "dataMaturity", "maturity",
+    ))
     for value in values:
         match = MATURITY_PATTERN.search(value)
         if match:
