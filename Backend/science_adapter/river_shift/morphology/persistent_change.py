@@ -27,6 +27,7 @@ def detect_persistent_change(
     *,
     pixel_area_m2: float,
     post_valid_stack: np.ndarray | None = None,
+    before_valid: np.ndarray | None = None,
     persistence_fraction: float = 0.8,
     minimum_post_observations: int = 2,
 ) -> PersistentChangeResult:
@@ -55,10 +56,15 @@ def detect_persistent_change(
     has_enough = valid_count >= minimum_post_observations
     fraction[has_enough] = water_count[has_enough] / valid_count[has_enough]
 
-    persistent_water = has_enough & (fraction >= persistence_fraction)
-    persistent_dry = has_enough & (fraction <= (1.0 - persistence_fraction))
-    # Exclude cells without a reliable pre-event state only if caller has encoded
-    # that uncertainty in the input; pre-event validity is handled upstream.
+    if before_valid is None:
+        before_is_valid = np.ones(before.shape, dtype=bool)
+    else:
+        before_is_valid = np.asarray(before_valid, dtype=bool)
+        if before_is_valid.shape != before.shape:
+            raise PersistentChangeError("before_valid must match before_water shape.")
+
+    persistent_water = has_enough & (fraction >= persistence_fraction) & before_is_valid
+    persistent_dry = has_enough & (fraction <= (1.0 - persistence_fraction)) & before_is_valid
     erosion = ~before & persistent_water
     deposition = before & persistent_dry
 
