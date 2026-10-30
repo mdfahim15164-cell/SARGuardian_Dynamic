@@ -23,7 +23,8 @@ class GcovRaster:
     valid_mask: np.ndarray
     x_coordinates: np.ndarray
     y_coordinates: np.ndarray
-    epsg: int
+    crs_wkt: str
+    epsg: int | None
     frequency: str
     covariance_term: str
     source_path: str
@@ -34,10 +35,14 @@ class GcovRaster:
         return self.power.shape
 
     @property
+    def crs(self) -> CRS:
+        return CRS.from_wkt(self.crs_wkt)
+
+    @property
     def pixel_area_m2(self) -> float:
         dx = float(np.median(np.diff(self.x_coordinates)))
         dy = float(np.median(np.diff(self.y_coordinates)))
-        crs = CRS.from_epsg(self.epsg)
+        crs = self.crs
         if not crs.is_projected:
             raise GcovReadError("GCOV grid must use a projected CRS to derive pixel area.")
         axes = crs.axis_info
@@ -52,27 +57,57 @@ def _decode_scalar(value: Any) -> Any:
     if isinstance(value, np.ndarray) and value.shape == ():
         value = value.item()
     if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
+        return value.decode("utf-8", errors="replace").strip("\x00 ")
+    if isinstance(value, np.bytes_):
+        return bytes(value).decode("utf-8", errors="replace").strip("\x00 ")
     return value
 
 
-def _find_epsg(projection: h5py.Dataset) -> int:
-    candidates = [projection[()]]
-    candidates.extend(projection.attrs.get(key) for key in ("epsg_code", "epsgCode", "spatial_ref", "crs_wkt"))
+def _resolve_crs(projection: h5py.Dataset) -> CRS:
+    """Resolve CRS from EPSG, WKT or CF grid-mapping metadata without guessing."""
+    raw = _decode_scalar(projection[()])
+    attributes = {
+        str(key): _decode_scalar(value)
+        for key, value in projection.attrs.items()
+    }
+
+    candidates: list[Any] = [raw]
+    for key in ("epsg_code", "epsgCode", "spatial_ref", "crs_wkt", "wkt"):
+        if key in attributes:
+            candidates.append(attributes[key])
+
     for candidate in candidates:
         if candidate is None:
             continue
-        value = _decode_scalar(candidate)
-        if isinstance(value, (int, np.integer)):
-            if int(value) > 0:
-                return int(value)
-        text = str(value)
-        if "EPSG:" in text.upper():
+        if isinstance(candidate, (int, np.integer)):
             try:
-                return int(text.upper().split("EPSG:", 1)[1].split()[0].strip(" ,;)]}"))
-            except ValueError:
-                pass
-    raise GcovReadError("Could not resolve the EPSG code from the GCOV projection dataset.")
+                return CRS.from_epsg(int(candidate))
+            except Exception:
+                continue
+        text = str(candidate).strip()
+        if not text:
+            continue
+        try:
+            return CRS.from_user_input(text)
+        except Exception:
+            pass
+
+    # NISAR products use CF metadata conventions. CRS.from_cf expects the
+    # complete grid-mapping attribute dictionary, not an inferred UTM zone.
+    cf_attributes = {
+        key: value
+        for key, value in attributes.items()
+        if value is not None and key not in {"_FillValue", "long_name", "description"}
+    }
+    if "grid_mapping_name" in cf_attributes:
+        try:
+            return CRS.from_cf(cf_attributes)
+        except Exception:
+            pass
+
+    raise GcovReadError(
+        "Could not resolve CRS from the GCOV projection dataset (EPSG, WKT or CF attributes)."
+    )
 
 
 def _check_regular_axis(values: np.ndarray, name: str) -> None:
@@ -95,7 +130,7 @@ def read_gcov(
     """Load one real-valued GCOV diagonal term and its geospatial grid metadata.
 
     The returned array is not resampled or thresholded. Its numeric values remain
-    in the units stored by the source product (normally linear gamma-naught power).
+    in the source product's units (GCOV diagonal layers are gamma0 power).
     """
     frequency = frequency.upper()
     covariance_term = covariance_term.upper()
@@ -113,9 +148,15 @@ def read_gcov(
 
     try:
         with h5py.File(path, "r") as h5:
-            for required in (data_path, f"{grid_path}/xCoordinates", f"{grid_path}/yCoordinates", f"{grid_path}/projection"):
-                if required not in h5:
-                    raise GcovReadError(f"Required GCOV dataset is missing: {required}")
+            required = (
+                data_path,
+                f"{grid_path}/xCoordinates",
+                f"{grid_path}/yCoordinates",
+                f"{grid_path}/projection",
+            )
+            for dataset_path in required:
+                if dataset_path not in h5:
+                    raise GcovReadError(f"Required GCOV dataset is missing: {dataset_path}")
 
             dataset = h5[data_path]
             if np.issubdtype(dataset.dtype, np.complexfloating):
@@ -123,7 +164,7 @@ def read_gcov(
             power = np.asarray(dataset[()], dtype=np.float32)
             x = np.asarray(h5[f"{grid_path}/xCoordinates"][()], dtype=np.float64)
             y = np.asarray(h5[f"{grid_path}/yCoordinates"][()], dtype=np.float64)
-            epsg = _find_epsg(h5[f"{grid_path}/projection"])
+            crs = _resolve_crs(h5[f"{grid_path}/projection"])
             units_value = dataset.attrs.get("units")
             units = str(_decode_scalar(units_value)) if units_value is not None else None
 
@@ -136,6 +177,8 @@ def read_gcov(
             _check_regular_axis(x, "xCoordinates")
             _check_regular_axis(y, "yCoordinates")
 
+            # A strictly positive finite covariance value is numerically valid.
+            # numberOfLooks is an additional validity constraint when supplied.
             valid = np.isfinite(power) & (power > 0)
             looks_path = f"{grid_path}/numberOfLooks"
             if looks_path in h5:
@@ -147,12 +190,14 @@ def read_gcov(
     except OSError as exc:
         raise GcovReadError(f"Could not open GCOV HDF5 product: {exc}") from exc
 
+    epsg = crs.to_epsg()
     return GcovRaster(
         power=power,
         valid_mask=valid,
         x_coordinates=x,
         y_coordinates=y,
-        epsg=epsg,
+        crs_wkt=crs.to_wkt(),
+        epsg=int(epsg) if epsg is not None else None,
         frequency=frequency,
         covariance_term=covariance_term,
         source_path=str(path),
@@ -161,7 +206,7 @@ def read_gcov(
 
 
 def inspect_gcov(source_path: str | Path) -> dict[str, Any]:
-    """Return a small, auditable inventory of candidate GCOV layers in a file."""
+    """Return an inventory of candidate GCOV diagonal layers in a file."""
     path = Path(source_path)
     if not path.is_file():
         raise GcovReadError(f"GCOV file does not exist: {path}")
