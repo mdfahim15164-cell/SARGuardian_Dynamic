@@ -1,13 +1,19 @@
 # 01 · Discover NISAR GCOV products
 
 ## Purpose
-Find real NISAR Level-2 GCOV granules intersecting a single WGS84 study polygon and an acquisition-date interval. This is catalogue discovery only. It does not download imagery, run science processing, or claim a flood result.
+Find real NISAR Level-2 GCOV granules intersecting a single WGS84 study polygon and an acquisition-date interval. Search NASA CMR by the official NISAR GCOV collection short name and read UMM-G metadata. This is catalogue discovery only; it does not download imagery, run science processing, or claim a flood result.
 
 ## NASA challenge relevance
-This is the data-acquisition gate for the NASA Space Apps 2026 challenge “Dancing with the SARs”. The output records NASA-ISRO NISAR product identifiers and ASF DAAC provenance so the later analysis can show that NISAR is the primary data source.
+This is the data-acquisition gate for the NASA Space Apps 2026 challenge “Dancing with the SARs”. The output records NASA-ISRO NISAR product identifiers, CMR granule concept IDs, and ASF DAAC data links so the later analysis can show that NISAR is the primary data source.
 
 ## Scientific question
 Does the selected AOI have enough compatible NISAR GCOV acquisitions to support a multi-date backscatter change analysis?
+
+## Official collection short names
+- PROVISIONAL: `NISAR_L2_GCOV_PROVISIONAL_V1`
+- BETA: `NISAR_L2_GCOV_BETA_V1`
+
+These are queried separately. `ALL` performs two collection searches and does not imply that the two maturities can be mixed into one analysis.
 
 ## Inputs
 - One valid, non-empty Polygon WKT in EPSG:4326, coordinates ordered longitude then latitude.
@@ -24,9 +30,9 @@ Important: FULL/PARTIAL is a product-frame metadata field. It does not say how m
 
 ## Method
 1. Validate the WGS84 polygon and date order.
-2. Query the ASF Search API with dataset=NISAR, processingLevel=GCOV, intersectsWith, start and end, requesting `output=json`.
+2. Query NASA CMR granules by the exact collection `short_name`, a closed counter-clockwise AOI polygon, and the requested temporal interval. Request UMM-JSON 1.18.5.
 3. Parse the official 18-token single-acquisition GCOV granule name, including orbit, frame, bandwidth mode, polarization, timestamps, CRID and FULL/PARTIAL frame coverage; keep ASF-supplied footprint geometry for the separate AOI-coverage audit.
-4. Resolve maturity only from the official ASF collection URL/path or explicit collection metadata. A CRID token alone is not used to guess BETA/PROVISIONAL maturity.
+4. Assign maturity from the collection short name used in the query. A CRID token alone is never used to guess BETA/PROVISIONAL maturity.
 5. Write the unmodified catalogue identifiers into a JSON manifest.
 
 ## Reproduce
@@ -44,8 +50,11 @@ The coordinates above are the repository's explicitly unapproved Sirajganj–Kaz
 
 ## Acceptance tests
 - Invalid geometry and reversed dates fail before network access.
+- PROVISIONAL and BETA map to their exact CMR collection short names.
+- CMR UMM-JSON 1.18.5 is parsed and granule IDs, geometry, dates, CMR concept ID and GET DATA links are preserved.
+- CMR pagination continues when local polarization/direction/frame filters reduce a page.
 - Product-level filter excludes non-GCOV results.
-- The ASF request uses documented `output=json`.
+- The NASA CMR request uses a documented collection `short_name`, polygon and temporal range with UMM-JSON 1.18.5.
 - The official 18-token GCOV filename is parsed; malformed names are rejected.
 - Frame coverage ALL/FULL/PARTIAL is preserved separately from AOI footprint percentage.
 - Unknown maturity remains UNKNOWN and is not inferred from CRID.
@@ -73,7 +82,7 @@ The coordinates above are the repository's explicitly unapproved Sirajganj–Kaz
 - Confirm no flood/erosion metric is claimed by this script.
 
 ## Primary references
-- ASF Search API keywords: https://docs.asf.alaska.edu/api/keywords/
-- ASF search manual: https://docs.asf.alaska.edu/asf_search/searching/
+- NISAR GCOV collection short names and `earthaccess.search_data`: https://nisar-docs.asf.alaska.edu/earthaccess/
+- NASA CMR granule search and polygon/temporal parameters: https://cmr.earthdata.nasa.gov/search/site/docs/search/api.html
 - NISAR GCOV product guide: https://nisar-docs.asf.alaska.edu/gcov/
 - NASA NISAR data: https://science.nasa.gov/mission/nisar/data/
