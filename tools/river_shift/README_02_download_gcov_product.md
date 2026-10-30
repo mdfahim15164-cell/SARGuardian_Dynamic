@@ -15,10 +15,11 @@ The downloaded HDF5 file is the native NASA-ISRO NISAR observation used by the s
 ## Method
 1. Find exactly one matching product in the manifest.
 2. Refuse ambiguous or missing granule names.
-3. Validate that the product URL uses HTTPS and a trusted ASF/NISAR Earthdata host.
-4. Download the product as a streamed HDF5 file to a temporary .part path.
-5. Compare received bytes with HTTP Content-Length when supplied.
-6. Atomically rename the complete file and write a SHA-256 receipt.
+3. Use the exact ASF URL returned in the catalogue manifest. If it is absent, construct the canonical ASF HTTPS path only when the official collection maturity is explicitly known as BETA or PROVISIONAL and the granule name passes the official GCOV filename validator. Unknown maturity blocks URL construction and download.
+4. Validate that the product URL uses HTTPS and a trusted ASF/NISAR Earthdata host.
+5. Download the product as a streamed HDF5 file to a temporary .part path.
+6. Compare received bytes with HTTP Content-Length when supplied.
+7. Atomically rename the complete file and write a SHA-256 receipt.
 
 ## Reproduce
 From tools/river_shift:
@@ -34,7 +35,9 @@ On Windows PowerShell, set the token in the terminal session using $env:EARTHDAT
 
 ## Acceptance tests
 - The granule name must match exactly one manifest record.
+- URL reconstruction is permitted only for a strict official 18-token GCOV name with explicit BETA/PROVISIONAL collection maturity.
 - An untrusted/non-HTTPS download host is rejected.
+- Unknown maturity is never inferred from the CRID or filename.
 - Empty or partial downloads are deleted.
 - A received Content-Length mismatch fails.
 - SHA-256 and byte count are recorded after successful download.
