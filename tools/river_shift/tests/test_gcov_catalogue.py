@@ -70,24 +70,64 @@ def test_explicit_maturity_enum_is_respected_without_collection_path():
     assert product["download_url"].endswith("/" + GRANULE + ".h5")
 
 
-def test_search_uses_documented_asf_json_and_full_frame_filter(monkeypatch):
-    captured = {"urls": []}
+def test_search_uses_official_cmr_collection_short_name_and_umm_json(monkeypatch):
+    captured = []
+
+    def fake_umm_item():
+        return {
+            "meta": {"concept-id": "G1234567890-ASF"},
+            "umm": {
+                "GranuleUR": GRANULE,
+                "TemporalExtents": [{
+                    "RangeDateTimes": [{
+                        "BeginningDateTime": "2026-07-18T15:50:41.000Z",
+                        "EndingDateTime": "2026-07-18T15:50:59.000Z"
+                    }]
+                }],
+                "SpatialExtent": {
+                    "HorizontalSpatialDomain": {
+                        "Geometry": {
+                            "GPolygons": [{
+                                "Boundary": {
+                                    "Points": [
+                                        {"Longitude": 89.5, "Latitude": 24.4},
+                                        {"Longitude": 89.8, "Latitude": 24.4},
+                                        {"Longitude": 89.8, "Latitude": 24.7},
+                                        {"Longitude": 89.5, "Latitude": 24.7},
+                                        {"Longitude": 89.5, "Latitude": 24.4}
+                                    ]
+                                }
+                            }]
+                        }
+                    }
+                },
+                "RelatedUrls": [{"URL": PROVISIONAL_URL, "Type": "GET DATA", "URLContentType": "DistributionURL"}],
+                "DataGranule": {
+                    "ArchiveAndDistributionInformation": [{"Size": "100", "SizeUnit": "MB"}]
+                }
+            }
+        }
+
+    class FakeHeaders(dict):
+        pass
 
     class FakeResponse:
+        headers = FakeHeaders({"CMR-Hits": "1"})
         def __enter__(self):
             return self
         def __exit__(self, *_args):
             return False
         def read(self):
-            return json.dumps({"results": []}).encode("utf-8")
+            return json.dumps({"hits": 1, "items": [fake_umm_item()]}).encode("utf-8")
 
     def fake_urlopen(request, timeout):
-        captured["urls"].append(request.full_url)
-        captured["timeout"] = timeout
+        captured.append(request.full_url)
+        assert "NISAR_L2_GCOV_PROVISIONAL_V1" in request.full_url
+        assert "processingLevel" not in request.full_url
         return FakeResponse()
 
     monkeypatch.setattr("discover_gcov_products.urllib.request.urlopen", fake_urlopen)
-    search_catalogue(
+    result = search_catalogue(
         "POLYGON ((89.5 24.4, 89.8 24.4, 89.8 24.7, 89.5 24.7, 89.5 24.4))",
         date(2026, 6, 17),
         date(2026, 10, 31),
@@ -98,13 +138,19 @@ def test_search_uses_documented_asf_json_and_full_frame_filter(monkeypatch):
         20,
         "FULL",
     )
-    assert len(captured["urls"]) == 2
-    params = parse_qs(urlparse(captured["urls"][0]).query)
-    broad_params = parse_qs(urlparse(captured["urls"][1]).query)
-    assert params["output"] == ["json"]
-    assert params["frameCoverage"] == ["FULL"]
-    assert params["processingLevel"] == ["GCOV"]
-    assert "processingLevel" not in broad_params
+    assert len(captured) == 1
+    params = parse_qs(urlparse(captured[0]).query)
+    assert params["short_name"] == ["NISAR_L2_GCOV_PROVISIONAL_V1"]
+    assert params["temporal[]"] == ["2026-06-17T00:00:00Z,2026-10-31T23:59:59Z"]
+    assert "polygon" in params
+    assert result["product_count"] == 1
+    product = result["products"][0]
+    assert product["maturity"] == "PROVISIONAL"
+    assert product["granule_name"] == GRANULE
+    assert product["main_band_polarization"] == "HH+HV"
+    assert product["footprint"]["type"] == "Polygon"
+    assert product["size_mb"] == 100.0
+    assert result["query"]["response_format"] == "UMM-JSON 1.18.5"
 
 
 def test_validate_aoi_rejects_non_polygon():
