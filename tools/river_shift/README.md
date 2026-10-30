@@ -61,7 +61,7 @@ Read these task-specific documents before each script:
 - README_08_measure_bankline_migration.md
 
 ## Bankline transect measurement
-For a signed bankline movement measurement, use `measure_bankline_migration.py` only after independently digitising two dated banklines and creating user-oriented transects in one projected metre CRS. Each transect must intersect each bankline exactly once; ambiguous braided-channel intersections are rejected. The sign convention is start-to-end along the transect and must be declared in `--positive-direction-label`.
+For a signed bankline movement measurement, use `measure_bankline_migration.py` only after independently digitising two dated banklines and creating user-oriented transects as WGS84 GeoJSON. The script reprojects them to a declared metric analysis CRS. Each transect must intersect each bankline exactly once; ambiguous braided-channel intersections are rejected. The sign convention is start-to-end along the transect and must be declared in `--positive-direction-label`.
 
 See `README_08_measure_bankline_migration.md` and `river_shift/README_06_transects.md` before running it.
 
