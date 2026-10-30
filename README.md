@@ -50,7 +50,7 @@ Implemented in this feature branch:
 - A candidate Sirajganj–Kazipur AOI, explicitly not approved as the final study polygon.
 - Separate public frontend route at /river-shift.
 - Catalogue, scientific-result and GeoJSON inspection UI.
-- Per-task and per-module scientific READMEs, signed bankline transect measurement, and regression tests.
+- Per-task and per-module scientific READMEs, signed bankline transect measurement, catalogue footprint audit, and regression tests.
 
 ### Not yet claimed
 A real Jamuna study event, available NISAR granule count, flood area, erosion area, accuracy score or measured migration rate has **not** been established by this code change. The first research milestone is running the manual ASF GCOV audit workflow with a team-approved AOI. A candidate Sirajganj–Kazipur polygon is included only for initial feasibility testing. The morphology boundary distance is a symmetric screening proxy. The separate signed transect tool requires independently digitised banklines and oriented transects; it is not an automatic NISAR bankline extractor. GCOV processing is currently run through local CLI tools; a durable cloud-dispatched RiverShift worker and Supabase job schema are future integration work.
