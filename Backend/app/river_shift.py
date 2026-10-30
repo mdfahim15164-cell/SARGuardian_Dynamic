@@ -22,6 +22,7 @@ EARTH_RADIUS_METERS = 6_371_000.0
 Maturity = Literal["BETA", "PROVISIONAL", "ALL"]
 Polarization = Literal["HH", "HH+HV", "HH+VV", "HH+HV+VH+VV", "VV", "VV+VH", "LH+LV", "RH+RV"]
 FlightDirection = Literal["ASCENDING", "DESCENDING"]
+FrameCoverage = Literal["FULL", "PARTIAL", "ALL"]
 
 
 class RiverShiftCatalogRequest(BaseModel):
@@ -31,6 +32,7 @@ class RiverShiftCatalogRequest(BaseModel):
     maturity: Maturity = "PROVISIONAL"
     main_band_polarization: Polarization | None = None
     flight_direction: FlightDirection | None = None
+    frame_coverage: FrameCoverage = "FULL"
     max_results: int = Field(default=100, ge=1, le=MAX_RESULTS)
 
 
@@ -48,6 +50,7 @@ class RiverShiftProduct(BaseModel):
     bandwidth_mode: str | None = None
     polarization_code: str | None = None
     main_band_polarization: str | None = None
+    frame_coverage: str | None = None
     size_mb: float | None = None
 
 
@@ -128,29 +131,38 @@ def _first_string(row: dict[str, Any], keys: tuple[str, ...]) -> str | None:
     return None
 
 
-def _maturity(url: str | None) -> str:
-    value = (url or "").upper()
-    if "NISAR_L2_GCOV_PROVISIONAL_V1" in value:
-        return "PROVISIONAL"
-    if "NISAR_L2_GCOV_BETA_V1" in value:
-        return "BETA"
+def _maturity(url: str | None, row: dict[str, Any] | None = None) -> str:
+    values = [url or ""]
+    if row:
+        values.extend(str(row.get(key, "")) for key in ("collectionName", "collection", "shortName"))
+    for value in values:
+        value = value.upper()
+        if "NISAR_L2_GCOV_PROVISIONAL_V1" in value:
+            return "PROVISIONAL"
+        if "NISAR_L2_GCOV_BETA_V1" in value:
+            return "BETA"
     return "UNKNOWN"
 
 
 def _granule_parts(name: str) -> dict[str, str | None]:
-    parts = name.split("_")
-    if len(parts) < 13 or parts[0] != "NISAR" or "GCOV" not in parts[:5]:
-        return {
-            "cycle": None, "relative_orbit": None, "flight_direction": None,
-            "frame": None, "bandwidth_mode": None, "polarization_code": None,
-        }
+    parts = name.removesuffix(".h5").split("_")
+    if (
+        len(parts) != 18 or parts[0] != "NISAR" or parts[1] != "L2"
+        or parts[2] not in {"PR", "UR", "OD"} or parts[3] != "GCOV"
+        or parts[6] not in {"A", "D"} or parts[15] not in {"F", "P"}
+    ):
+        return {}
     return {
         "cycle": parts[4],
         "relative_orbit": parts[5],
-        "flight_direction": parts[6],
+        "flight_direction": {"A": "ASCENDING", "D": "DESCENDING"}[parts[6]],
         "frame": parts[7],
         "bandwidth_mode": parts[8],
         "polarization_code": parts[9],
+        "acquisition_start_utc": parts[11],
+        "acquisition_end_utc": parts[12],
+        "crid": parts[13],
+        "frame_coverage": "FULL" if parts[15] == "F" else "PARTIAL",
     }
 
 
@@ -159,8 +171,17 @@ def _product(row: dict[str, Any]) -> RiverShiftProduct | None:
     level = _first_string(row, ("processingLevel", "productType", "scienceProduct"))
     if not name or (level and level.upper() != "GCOV"):
         return None
+    name = name.removesuffix(".h5")
     url = _first_string(row, ("url", "downloadUrl", "downloadURL", "productUrl", "product_url"))
     parts = _granule_parts(name)
+    if not parts:
+        return None
+    maturity = _maturity(url, row)
+    if not url and maturity in {"BETA", "PROVISIONAL"}:
+        url = (
+            "https://nisar.asf.earthdatacloud.nasa.gov/NISAR/"
+            f"NISAR_L2_GCOV_{maturity}_V1/{name}/{name}.h5"
+        )
     size = row.get("sizeMB")
     if isinstance(size, dict):
         byte_values = [
@@ -176,21 +197,25 @@ def _product(row: dict[str, Any]) -> RiverShiftProduct | None:
 
     direction = _first_string(row, ("flightDirection", "direction")) or parts["flight_direction"]
     if direction:
-        direction = {"A": "ASCENDING", "D": "DESCENDING"}.get(direction.upper(), direction.upper())
+        direction = {"A": "ASCENDING", "D": "DESCENDING", "ASC": "ASCENDING", "DESC": "DESCENDING"}.get(direction.upper(), direction.upper())
 
     return RiverShiftProduct(
         granule_name=name,
-        maturity=_maturity(url),
+        maturity=maturity,
         download_url=url,
-        start_time_utc=_first_string(row, ("startTime", "acquisitionDate")),
-        stop_time_utc=_first_string(row, ("stopTime", "endTime")),
+        start_time_utc=_first_string(row, ("startTime", "acquisitionDate")) or parts["acquisition_start_utc"],
+        stop_time_utc=_first_string(row, ("stopTime", "endTime")) or parts["acquisition_end_utc"],
         flight_direction=direction,
         relative_orbit=parts["relative_orbit"],
         cycle=parts["cycle"],
         frame=parts["frame"],
         bandwidth_mode=parts["bandwidth_mode"],
         polarization_code=parts["polarization_code"],
-        main_band_polarization=_first_string(row, ("mainBandPolarization", "polarization")),
+        main_band_polarization=_first_string(row, ("mainBandPolarization", "polarization")) or {
+            "SH": "HH", "SV": "VV", "DH": "HH+HV", "DV": "VV+VH",
+            "CL": "LH+LV", "CR": "RH+RV",
+        }.get((parts["polarization_code"] or "")[:2]),
+        frame_coverage=_first_string(row, ("frameCoverage", "coverage")) or parts["frame_coverage"],
         size_mb=size_mb,
     )
 
@@ -214,13 +239,16 @@ def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalo
         "intersectsWith": _polygon_wkt(coordinates),
         "start": f"{request.start_date.isoformat()}T00:00:00Z",
         "end": f"{request.end_date.isoformat()}T23:59:59Z",
-        "output": "jsonlite",
+        "output": "json",
+        "frameCoverage": request.frame_coverage if request.frame_coverage != "ALL" else "",
         "maxResults": str(request.max_results),
     }
     if request.main_band_polarization:
         params["mainBandPolarization"] = request.main_band_polarization
     if request.flight_direction:
         params["flightDirection"] = request.flight_direction
+    if not params["frameCoverage"]:
+        params.pop("frameCoverage")
 
     url = f"{ASF_SEARCH_URL}?{urllib.parse.urlencode(params)}"
     http_request = urllib.request.Request(
@@ -271,7 +299,9 @@ def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalo
             "maturity": request.maturity,
             "main_band_polarization": request.main_band_polarization,
             "flight_direction": request.flight_direction,
+            "frame_coverage": request.frame_coverage,
             "archive": "ASF DAAC Search API",
+            "response_format": "json",
         },
         product_count=len(products),
         products=products,
