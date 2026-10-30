@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+from shapely import wkt as shapely_wkt
+from shapely.geometry import mapping
 
 from inspect_gcov_product import inspect_product
 
@@ -35,8 +37,9 @@ def export_layer(
         raise ValueError("frequency must be frequencyA or frequencyB.")
     if maturity not in {"BETA", "PROVISIONAL", "UNKNOWN"}:
         raise ValueError("maturity must be BETA, PROVISIONAL or UNKNOWN.")
-    if not aoi_wkt.strip().upper().startswith("POLYGON"):
-        raise ValueError("AOI must be a WGS84 POLYGON WKT.")
+    geometry = shapely_wkt.loads(aoi_wkt)
+    if geometry.geom_type != "Polygon" or geometry.is_empty or not geometry.is_valid:
+        raise ValueError("AOI must be one valid, non-empty WGS84 POLYGON WKT.")
 
     inventory = inspect_product(product)
     expected_suffix = f"/science/LSAR/GCOV/grids/{frequency}/{term}"
@@ -51,12 +54,24 @@ def export_layer(
     subdataset = matches[0]
     output.parent.mkdir(parents=True, exist_ok=True)
     clipped = output.with_name(output.stem + ".aoi-intermediate.tif")
+    cutline = output.with_name(output.stem + ".cutline.geojson")
+    cutline.write_text(
+        json.dumps({
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "properties": {},
+                "geometry": mapping(geometry),
+            }],
+        }),
+        encoding="utf-8",
+    )
 
-    # Warp the selected HDF5 subdataset directly to the AOI. This avoids first
-    # materializing a potentially multi-gigabyte full-frame raster.
+    # GDAL -cutline expects a vector datasource, so pass this temporary GeoJSON.
+    # Warp the selected HDF5 subdataset directly to the AOI to avoid a full-frame raster.
     run([
         "gdalwarp", "-overwrite", "-of", "GTiff",
-        "-cutline", aoi_wkt,
+        "-cutline", str(cutline),
         "-cutline_srs", "EPSG:4326",
         "-crop_to_cutline",
         "-dstalpha",
@@ -72,6 +87,7 @@ def export_layer(
     ])
 
     clipped.unlink(missing_ok=True)
+    cutline.unlink(missing_ok=True)
     metadata = {
         "schema_version": 1,
         "source_product_file": str(product.resolve()),
