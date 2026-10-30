@@ -21,6 +21,10 @@ def _product_geometry(product: dict[str, Any]):
     geometry = product.get("footprint")
     if isinstance(geometry, dict):
         try:
+            if geometry.get("type") == "Feature":
+                geometry = geometry.get("geometry")
+            if not isinstance(geometry, dict):
+                return None
             return shape(geometry)
         except Exception:
             return None
