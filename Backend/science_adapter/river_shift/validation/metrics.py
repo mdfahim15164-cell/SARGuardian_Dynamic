@@ -24,10 +24,17 @@ def binary_confusion_metrics(
 
     valid = np.ones(pred.shape, dtype=bool)
     if valid_mask is not None:
-        mask = np.asarray(valid_mask, dtype=bool)
+        mask = np.asarray(valid_mask)
         if mask.shape != pred.shape:
             raise ValidationError("valid_mask must match prediction shape.")
-        valid &= mask
+        if mask.dtype != np.bool_:
+            if (
+                not np.issubdtype(mask.dtype, np.number)
+                or not np.isfinite(mask).all()
+                or not np.isin(mask, [0, 1]).all()
+            ):
+                raise ValidationError("valid_mask must contain only Boolean or finite 0/1 values.")
+        valid &= mask.astype(bool)
 
     p = pred.astype(bool)[valid]
     t = truth.astype(bool)[valid]
