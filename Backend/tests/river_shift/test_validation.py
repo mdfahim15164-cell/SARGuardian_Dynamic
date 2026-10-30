@@ -37,3 +37,11 @@ def test_threshold_sensitivity_returns_one_row_per_threshold():
     rows = evaluate_fixed_thresholds(power, truth, [-15, -5], valid_mask=np.ones((2, 2), dtype=bool))
     assert len(rows) == 2
     assert all("f1" in row for row in rows)
+
+
+def test_validation_rejects_nan_validity_mask():
+    prediction = np.array([[1, 0], [0, 1]])
+    reference = np.array([[1, 0], [0, 1]])
+    valid = np.array([[1.0, 1.0], [float("nan"), 1.0]])
+    with pytest.raises(ValidationError):
+        binary_confusion_metrics(prediction, reference, valid_mask=valid)
