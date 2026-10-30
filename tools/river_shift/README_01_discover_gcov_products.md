@@ -14,7 +14,10 @@ Does the selected AOI have enough compatible NISAR GCOV acquisitions to support 
 - Inclusive acquisition start and end dates.
 - Maturity filter: PROVISIONAL, BETA, or ALL (ALL is for auditing; do not mix maturities in one time series).
 - Optional Frequency-A main-band polarization and orbit direction.
+- NISAR frame-coverage filter: ALL, FULL or PARTIAL (default ALL for initial discovery).
 - Maximum results from 1 to 2000.
+
+`FULL` or `PARTIAL` describes the NISAR frame product. It is not the percentage of the user-defined AOI covered by a scene. See README_09 for per-date footprint coverage.
 - Optional NISAR frame-coverage filter (ALL, FULL, PARTIAL; default ALL for discovery).
 
 Important: FULL/PARTIAL is a product-frame metadata field. It does not say how much of the user-drawn AOI is covered; README_09 calculates that percentage from actual footprints.
@@ -30,9 +33,9 @@ Important: FULL/PARTIAL is a product-frame metadata field. It does not say how m
 Run from tools/river_shift:
 
     python -m pip install -r requirements.txt
-    python discover_gcov_products.py --aoi-wkt "POLYGON ((89.60 25.10, 89.90 25.10, 89.90 25.35, 89.60 25.35, 89.60 25.10))" --start-date 2026-06-17 --end-date 2026-10-31 --maturity PROVISIONAL --out data-audit/jamuna_gcov.json
+    python discover_gcov_products.py --aoi-wkt "POLYGON ((89.62 24.43, 89.78 24.43, 89.78 24.68, 89.62 24.68, 89.62 24.43))" --start-date 2026-06-17 --end-date 2026-10-31 --maturity PROVISIONAL --frame-coverage ALL --out data-audit/gcov-catalogue-manifest.json
 
-The coordinates above are a syntax example only, not a verified Jamuna AOI. Select and document the actual polygon before research runs.
+The coordinates above are the repository's explicitly unapproved Sirajganj–Kazipur candidate AOI. It is for catalogue feasibility only. Obtain science-team approval and replace it before making any study claim.
 
 ## Outputs
 - JSON manifest containing the query and each matching GCOV granule.
@@ -42,6 +45,10 @@ The coordinates above are a syntax example only, not a verified Jamuna AOI. Sele
 ## Acceptance tests
 - Invalid geometry and reversed dates fail before network access.
 - Product-level filter excludes non-GCOV results.
+- The ASF request uses documented `output=json`.
+- The official 18-token GCOV filename is parsed; malformed names are rejected.
+- Frame coverage ALL/FULL/PARTIAL is preserved separately from AOI footprint percentage.
+- Unknown maturity remains UNKNOWN and is not inferred from CRID.
 - Official 18-token NISAR L2 GCOV product names are parsed, while malformed/pair-product names are rejected.
 - ASF request uses the documented `output=json` format.
 - FULL/PARTIAL frame coverage remains distinct from the user-defined AOI coverage percentage.
@@ -59,7 +66,8 @@ The coordinates above are a syntax example only, not a verified Jamuna AOI. Sele
 ## AI reviewer checklist
 - Confirm the endpoint is ASF DAAC and the dataset is NISAR.
 - Confirm processingLevel is GCOV.
-- Confirm maturity is explicit or marked UNKNOWN.
+- Confirm maturity comes from the official collection URL/metadata or is marked UNKNOWN.
+- Confirm acquisition date, orbit/track, processing type, CRID and frame coverage are retained.
 - Confirm all acquisition IDs/dates are retained.
 - Confirm the README command is reproducible and placeholders are labelled.
 - Confirm no flood/erosion metric is claimed by this script.
