@@ -15,11 +15,12 @@ router = APIRouter(prefix="/api/river-shift", tags=["RiverShift"])
 
 ASF_SEARCH_URL = "https://api.daac.asf.alaska.edu/services/search/param"
 MAX_RESULTS = 200
+MAX_AOI_AREA_KM2 = 1_000.0
 TIMEOUT_SECONDS = 25
 EARTH_RADIUS_METERS = 6_371_000.0
 
 Maturity = Literal["BETA", "PROVISIONAL", "ALL"]
-Polarization = Literal["HH", "HH+HV", "VV", "VV+VH", "LH+LV", "RH+RV"]
+Polarization = Literal["HH", "HH+HV", "HH+VV", "HH+HV+VH+VV", "VV", "VV+VH", "LH+LV", "RH+RV"]
 FlightDirection = Literal["ASCENDING", "DESCENDING"]
 
 
@@ -83,6 +84,20 @@ def _validate_coordinates(coordinates: list[list[float]]) -> list[tuple[float, f
         raise HTTPException(status_code=422, detail="AOI must contain at least 3 distinct vertices.")
     return normalized
 
+
+def _area_km2(coordinates: list[tuple[float, float]]) -> float:
+    ring = [*coordinates, coordinates[0]]
+    total = 0.0
+    for (lon_a, lat_a), (lon_b, lat_b) in zip(ring, ring[1:]):
+        delta_lon = math.radians(lon_b - lon_a)
+        if delta_lon > math.pi:
+            delta_lon -= 2 * math.pi
+        if delta_lon < -math.pi:
+            delta_lon += 2 * math.pi
+        total += delta_lon * (
+            math.sin(math.radians(lat_a)) + math.sin(math.radians(lat_b))
+        )
+    return abs(total) * EARTH_RADIUS_METERS ** 2 / 2 / 1_000_000
 
 def _polygon_wkt(coordinates: list[tuple[float, float]]) -> str:
     return "POLYGON ((" + ", ".join(f"{lon:.8f} {lat:.8f}" for lon, lat in coordinates) + "))"
@@ -178,6 +193,12 @@ def _product(row: dict[str, Any]) -> RiverShiftProduct | None:
 
 def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalogResponse:
     coordinates = _validate_coordinates(request.coordinates)
+    area = _area_km2(coordinates)
+    if not math.isfinite(area) or area <= 0 or area > MAX_AOI_AREA_KM2:
+        raise HTTPException(
+            status_code=422,
+            detail=f"AOI area must be positive and no larger than {MAX_AOI_AREA_KM2:g} km2.",
+        )
     if request.end_date < request.start_date:
         raise HTTPException(status_code=422, detail="end_date must not be earlier than start_date.")
     if (request.end_date - request.start_date).days > 366:
