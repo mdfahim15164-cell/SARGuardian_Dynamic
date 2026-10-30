@@ -60,7 +60,7 @@ def test_zero_strict_results_trigger_local_gcove_identity_fallback(monkeypatch):
 
 
 def test_broader_search_without_gcov_records_is_not_mislabelled(monkeypatch):
-    def fake_urlopen(_request, _timeout):
+    def fake_urlopen(request, timeout):
         return FakeResponse({"results": []})
 
     monkeypatch.setattr("discover_gcov_products.urllib.request.urlopen", fake_urlopen)
