@@ -59,6 +59,17 @@ def test_unknown_maturity_is_not_guessed_from_the_crid():
     assert product["download_url"] is None
 
 
+def test_explicit_maturity_enum_is_respected_without_collection_path():
+    product = normalize_product({
+        "granuleName": GRANULE,
+        "processingLevel": "GCOV",
+        "dataMaturity": "PROVISIONAL",
+    })
+    assert product is not None
+    assert product["maturity"] == "PROVISIONAL"
+    assert product["download_url"].endswith("/" + GRANULE + ".h5")
+
+
 def test_search_uses_documented_asf_json_and_full_frame_filter(monkeypatch):
     captured = {}
 
