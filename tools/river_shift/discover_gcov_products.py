@@ -147,7 +147,7 @@ def search_catalogue(
         "intersectsWith": aoi_wkt,
         "start": f"{start_date.isoformat()}T00:00:00Z",
         "end": f"{end_date.isoformat()}T23:59:59Z",
-        "output": "json",
+        "output": "jsonlite",
         "maxResults": str(max_results),
     }
     if main_band_polarization:
