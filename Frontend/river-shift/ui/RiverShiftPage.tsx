@@ -167,7 +167,7 @@ export function RiverShiftPage({ user, onHome, onSignOut }: RiverShiftPageProps)
 
             <div className="rs-form-grid">
               <label className="rs-field">
-                <span>NISAR data maturity</span>
+                <span>ASF maturity filter</span>
                 <select value={maturity} onChange={(event) => setMaturity(event.target.value as RiverShiftMaturity)}>
                   <option value="PROVISIONAL">PROVISIONAL</option>
                   <option value="BETA">BETA</option>
@@ -226,7 +226,7 @@ export function RiverShiftPage({ user, onHome, onSignOut }: RiverShiftPageProps)
             <div className="rs-result-summary">
               <div><small>AOI area</small><strong>{result.aoi_area_km2.toFixed(2)} km²</strong></div>
               <div><small>Product</small><strong>{result.processing_level}</strong></div>
-              <div><small>Maturity</small><strong>{result.data_maturity}</strong></div>
+              <div><small>Requested maturity filter</small><strong>{result.requested_maturity_filter}</strong></div>
               <div><small>Search window</small><strong>{result.start_date} → {result.end_date}</strong></div>
             </div>
             {result.result_count === 0 ? (
@@ -237,15 +237,18 @@ export function RiverShiftPage({ user, onHome, onSignOut }: RiverShiftPageProps)
             ) : (
               <div className="rs-table-wrap">
                 <table className="rs-table">
-                  <thead><tr><th>Granule</th><th>Acquisition</th><th>Direction</th><th>Path / Frame</th><th>Polarization</th><th>File size</th></tr></thead>
+                  <thead><tr><th>Granule</th><th>Acquisition</th><th>Direction / Track</th><th>Frame</th><th>Polarization / CRID</th><th>File size</th></tr></thead>
                   <tbody>
                     {result.scenes.map((scene) => (
                       <tr key={scene.granule_name}>
-                        <td><strong>{scene.granule_name}</strong><small>{scene.product_type} · {scene.data_maturity}</small></td>
+                        <td>
+                          <strong>{scene.granule_name}</strong>
+                          <small>{scene.product_type} · reported maturity: {scene.data_maturity || 'Not reported'} · filter: {scene.catalogue_maturity_filter}</small>
+                        </td>
                         <td>{scene.start_time || 'Not reported'}</td>
-                        <td>{scene.flight_direction || 'Not reported'}</td>
-                        <td>{scene.path_number ?? '—'} / {scene.frame_number ?? '—'}</td>
-                        <td>{scene.polarization || 'Not reported'}</td>
+                        <td>{scene.flight_direction || 'Not reported'} / {scene.relative_orbit ?? '—'}</td>
+                        <td>{scene.frame_number ?? '—'}</td>
+                        <td>{scene.polarization_mode || scene.polarization || 'Not reported'} / {scene.crid || '—'}</td>
                         <td>{formatBytes(scene.size_bytes)}</td>
                       </tr>
                     ))}
@@ -266,9 +269,4 @@ export function RiverShiftPage({ user, onHome, onSignOut }: RiverShiftPageProps)
       </main>
     </div>
   );
-}
-
-function formatBytes(bytes?: number | null): string {
-  if (!bytes || bytes <= 0) return 'Not reported';
-  return `${(bytes / (1024 ** 3)).toFixed(2)} GiB`;
 }
