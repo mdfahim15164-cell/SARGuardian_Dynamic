@@ -198,6 +198,11 @@ def _product(row: dict[str, Any]) -> RiverShiftProduct | None:
     direction = _first_string(row, ("flightDirection", "direction")) or parts["flight_direction"]
     if direction:
         direction = {"A": "ASCENDING", "D": "DESCENDING", "ASC": "ASCENDING", "DESC": "DESCENDING"}.get(direction.upper(), direction.upper())
+    coverage_raw = _first_string(row, ("frameCoverage", "coverage"))
+    coverage = (
+        {"F": "FULL", "FULL": "FULL", "P": "PARTIAL", "PARTIAL": "PARTIAL"}.get(coverage_raw.upper())
+        if coverage_raw else parts["frame_coverage"]
+    )
 
     return RiverShiftProduct(
         granule_name=name,
@@ -215,7 +220,7 @@ def _product(row: dict[str, Any]) -> RiverShiftProduct | None:
             "SH": "HH", "SV": "VV", "DH": "HH+HV", "DV": "VV+VH",
             "CL": "LH+LV", "CR": "RH+RV",
         }.get((parts["polarization_code"] or "")[:2]),
-        frame_coverage=_first_string(row, ("frameCoverage", "coverage")) or parts["frame_coverage"],
+        frame_coverage=coverage,
         size_mb=size_mb,
     )
 
