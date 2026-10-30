@@ -1,6 +1,13 @@
 name: RiverShift NISAR GCOV catalogue audit
 
 on:
+  push:
+    branches:
+      - feature/river-shift-engine-label
+    paths:
+      - "tools/river_shift/**"
+      - "data-audit/**"
+      - ".github/workflows/river-shift-gcov-audit.yml"
   workflow_dispatch:
     inputs:
       aoi_wkt:
@@ -79,14 +86,14 @@ jobs:
         id: discover
         working-directory: tools/river_shift
         env:
-          AOI_WKT: ${{ inputs.aoi_wkt }}
-          START_DATE: ${{ inputs.start_date }}
-          END_DATE: ${{ inputs.end_date }}
-          MATURITY: ${{ inputs.maturity }}
-          FRAME_COVERAGE: ${{ inputs.frame_coverage }}
-          MAIN_BAND_POLARIZATION: ${{ inputs.main_band_polarization }}
-          FLIGHT_DIRECTION: ${{ inputs.flight_direction }}
-          MINIMUM_COVERAGE: ${{ inputs.minimum_aoi_coverage_percent }}
+          AOI_WKT: ${{ github.event.inputs.aoi_wkt || 'POLYGON ((89.62 24.43, 89.78 24.43, 89.78 24.68, 89.62 24.68, 89.62 24.43))' }}
+          START_DATE: ${{ github.event.inputs.start_date || '2026-06-17' }}
+          END_DATE: ${{ github.event.inputs.end_date || '2026-10-31' }}
+          MATURITY: ${{ github.event.inputs.maturity || 'PROVISIONAL' }}
+          FRAME_COVERAGE: ${{ github.event.inputs.frame_coverage || 'ALL' }}
+          MAIN_BAND_POLARIZATION: ${{ github.event.inputs.main_band_polarization || 'Any' }}
+          FLIGHT_DIRECTION: ${{ github.event.inputs.flight_direction || 'Any' }}
+          MINIMUM_COVERAGE: ${{ github.event.inputs.minimum_aoi_coverage_percent || '90' }}
         shell: bash
         run: |
           set -euo pipefail
