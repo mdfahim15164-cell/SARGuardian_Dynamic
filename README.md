@@ -13,7 +13,8 @@ SARGuardian is an open-source, multi-engine surface-change monitoring platform. 
 1. Flood-period water expansion.
 2. Persistent land-to-water transition candidates (river erosion screening).
 3. Persistent water-to-land transition candidates (deposition/char screening).
-4. Independent validation against a reference water mask.
+4. Signed bankline movement along reviewed cross-river transects.
+5. Independent validation against a reference water mask.
 
 RiverShift uses NASA-ISRO NISAR Level-2 GCOV as its primary radar product. Supporting sources such as Sentinel-2, Bangladesh FFWC and land-cover datasets are used only when they are actually available and are clearly attributed.
 
@@ -32,6 +33,7 @@ Each script has its own method, inputs, outputs, validation requirements, limita
 - [05 Flood inundation screening](tools/river_shift/README_05_run_flood_analysis.md)
 - [06 River morphology screening](tools/river_shift/README_06_run_morphology_analysis.md)
 - [07 Water classification validation](tools/river_shift/README_07_validate_water_classification.md)
+- [08 Signed bankline migration](tools/river_shift/README_08_measure_bankline_migration.md)
 
 ### Current implementation status
 Implemented in this feature branch:
@@ -41,12 +43,13 @@ Implemented in this feature branch:
 - Three-date open-water screening.
 - Two-post-observation persistent erosion/deposition candidate screening.
 - Confusion matrix, precision, recall, F1, IoU, kappa and area-bias validation.
+- Signed transect-based bankline displacement measurement for reviewed bankline and transect inputs.
 - Separate public frontend route at /river-shift.
 - Catalogue, scientific-result and GeoJSON inspection UI.
 - Per-script scientific README files and regression tests.
 
 ### Not yet claimed
-A real Jamuna study event, available NISAR granule count, flood area, erosion area, accuracy score or validated river migration rate has **not** been established by this code change. The first research milestone is a real AOI/GCOV data availability audit. The current morphology boundary distance is a symmetric screening proxy, not a signed transect-based bank migration rate. GCOV processing is currently run through local CLI tools; a durable cloud-dispatched RiverShift worker and Supabase job schema are future integration work.
+A real Jamuna study event, available NISAR granule count, flood area, erosion area, accuracy score or measured migration rate has **not** been established by this code change. The first research milestone is a real AOI/GCOV data availability audit. The morphology boundary distance is a symmetric screening proxy. The separate signed transect tool requires independently digitised banklines and oriented transects; it is not an automatic NISAR bankline extractor. GCOV processing is currently run through local CLI tools; a durable cloud-dispatched RiverShift worker and Supabase job schema are future integration work.
 
 ## Run the frontend
 From Frontend:
