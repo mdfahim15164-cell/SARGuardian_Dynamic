@@ -13,6 +13,9 @@ This is the living acceptance checklist for the RiverShift owner. A checkbox is 
 - [x] Document challenge scorecard criteria as acceptance requirements.
 
 Evidence:
+- data-audit/candidate_sirajganj_jamuna_aoi.geojson
+- data-audit/README_SIRAJGANJ_CANDIDATE.md
+- .github/workflows/river-shift-gcov-audit.yml
 - Frontend/src/data/engineData.ts
 - Frontend/src/pages/RiverShiftPage.tsx
 - docs/RIVERSHIFT_ARCHITECTURE.md
@@ -31,18 +34,13 @@ Evidence:
 - [x] Use the documented ASF JSON response format and do not infer unknown maturity.
 - [x] Add multi-date comparability and per-date AOI footprint coverage audit.
 - [x] Add a manual GitHub Actions workflow for real ASF catalogue/footprint discovery without downloading data.
-- [x] Parse the official single-acquisition GCOV filename and preserve CRID/frame/orbit/polarization metadata.
-- [x] Use the documented ASF JSON response format and preserve unknown maturity instead of guessing.
-- [x] Add a multi-date compatibility and per-date AOI footprint coverage audit.
-- [x] Add a manual GitHub Actions workflow for a real ASF catalogue/footprint audit (no download or science claims).
 - [x] Add a candidate Sirajganj–Kazipur search polygon, clearly marked NOT APPROVED.
 - [ ] Select and independently review the final Jamuna/Sirajganj study AOI and replace the candidate polygon.
-- [ ] Manually run the GitHub Actions GCOV audit workflow using the team-approved AOI.
-- [ ] Run the manual GitHub Actions GCOV audit workflow with the team-approved AOI and download its catalogue/feasibility artifacts.
-- [ ] Query ASF and save an actual catalogue manifest for the selected AOI.
+- [ ] Manually run the GitHub Actions GCOV audit workflow using the team-approved AOI and download its catalogue/feasibility artifacts.
+- [ ] Review and save the actual ASF catalogue manifest for the selected AOI.
 - [ ] Confirm at least three comparable acquisitions exist for one event.
-- [ ] Confirm same maturity, frequency, diagonal term, orbit direction, relative track, frame, mode and compatible incidence geometry.
-- [ ] Confirm product coverage overlaps the entire analysis AOI, not just a corner.
+- [ ] Confirm same maturity, frequency, diagonal term, orbit direction, relative track, bandwidth mode, processing type and compatible incidence geometry.
+- [ ] Confirm each selected acquisition date meets the approved AOI footprint-coverage threshold and covers the full analysis AOI.
 - [ ] Record product IDs, URLs, dates, version/CRID, sizes, maturity and SHA-256 receipts.
 - [ ] Download and archive selected GCOV files outside Git.
 
