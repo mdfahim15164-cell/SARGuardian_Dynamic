@@ -40,12 +40,15 @@ The inspection script refuses GDAL versions older than 3.13.0 because the NISAR 
       raw/
       processed/
       reference/
+    data-audit/
+      candidate_sirajganj_jamuna_aoi.geojson
+      gcov-catalogue-manifest.json
+      gcov-time-series-audit.json
     results/
       flood/
       morphology/
       validation/
       bankline-migration/
-      data-audit/
 
 Keep raw multi-gigabyte products outside Git. Commit scripts, small test fixtures, README files, output manifests and selected small GeoJSON previews only. Never commit Earthdata credentials or private user data.
 
@@ -69,7 +72,9 @@ See `README_08_measure_bankline_migration.md` and `river_shift/README_06_transec
 ### GCOV time-series feasibility audit
 Run `audit_gcov_acquisitions.py` against the ASF catalogue manifest before downloading or analysing products. It requires a minimum of three distinct acquisition dates, the same maturity/orbit/track/bandwidth/polarization/processing type, and sufficient footprint-union coverage of the same AOI on each date. The default minimum is 90%; the team can raise it when the AOI is smaller and full coverage is needed.
 
-The GitHub Actions workflow `.github/workflows/river-shift-gcov-audit.yml` runs public catalogue discovery and footprint feasibility without downloading imagery. Select the approved WKT and use its downloadable artefacts as the catalogue evidence package. The default Sirajganj–Kazipur AOI is explicitly a candidate and is not approved.
+The GitHub Actions workflow `.github/workflows/river-shift-gcov-audit.yml` runs public catalogue discovery and footprint feasibility without downloading imagery. Select the team-approved WKT and use its downloadable artefacts as the catalogue evidence package. The default Sirajganj–Kazipur AOI is explicitly a candidate and is not approved.
+
+The workflow is manual: a contributor must open GitHub Actions and click Run workflow. The source-code workflow definition does not itself mean that an ASF query has been run. Save its downloaded JSON artefacts and review the returned products before selecting a time series.
 
 ## Data-comparability gate
 Before pixel-wise comparison, verify:
