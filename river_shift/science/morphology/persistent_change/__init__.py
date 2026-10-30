@@ -1,0 +1,1 @@
+"""Persistent river-change candidates."""
