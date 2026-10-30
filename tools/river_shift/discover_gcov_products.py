@@ -17,8 +17,8 @@ from shapely import wkt as shapely_wkt
 from shapely.geometry import Polygon
 from shapely.geometry.polygon import orient
 
-CMR_SEARCH_URL = "https://cmr.earthdata.nasa.gov/search/granules.umm_json_v1_18_5"
-CMR_ACCEPT = "application/vnd.nasa.cmr.umm_results+json; version=1.18.5"
+CMR_SEARCH_URL = "https://cmr.earthdata.nasa.gov/search/granules.umm_json_v1_6_7"
+CMR_ACCEPT = "application/vnd.nasa.cmr.umm_results+json; version=1.6.7"
 MATURITY_PATTERN = re.compile(r"NISAR_L2_GCOV_(BETA|PROVISIONAL)_V1", re.IGNORECASE)
 
 
@@ -483,7 +483,7 @@ def search_catalogue(
             "flight_direction": flight_direction,
             "max_results": max_results,
             "endpoint": CMR_SEARCH_URL,
-            "response_format": "UMM-JSON 1.18.5",
+            "response_format": "UMM-G 1.6.7",
             "collection_short_names": [f"NISAR_L2_GCOV_{value}_V1" for value in maturities],
             "spatial_parameter": "polygon",
             "temporal_parameter": "temporal[]",
