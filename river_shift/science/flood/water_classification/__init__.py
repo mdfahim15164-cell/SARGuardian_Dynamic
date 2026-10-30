@@ -1,1 +1,0 @@
-"""Open-water candidate classification."""
