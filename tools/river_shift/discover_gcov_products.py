@@ -223,7 +223,7 @@ def main() -> int:
     parser.add_argument("--start-date", required=True, type=date.fromisoformat)
     parser.add_argument("--end-date", required=True, type=date.fromisoformat)
     parser.add_argument("--maturity", choices=("BETA", "PROVISIONAL", "ALL"), default="PROVISIONAL")
-    parser.add_argument("--main-band-polarization", choices=("HH", "HH+HV", "VV", "VV+VH", "LH+LV", "RH+RV"))
+    parser.add_argument("--main-band-polarization", choices=("HH", "HH+HV", "HH+VV", "HH+HV+VH+VV", "VV", "VV+VH", "LH+LV", "RH+RV"))
     parser.add_argument("--flight-direction", choices=("ASCENDING", "DESCENDING"))
     parser.add_argument("--max-results", type=int, default=500)
     parser.add_argument("--timeout", type=int, default=45)
