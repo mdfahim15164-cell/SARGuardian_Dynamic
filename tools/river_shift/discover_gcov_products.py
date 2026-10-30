@@ -145,7 +145,12 @@ def normalize_product(row: dict[str, Any]) -> dict[str, Any] | None:
 
     direction = first_string(row, ("flightDirection", "direction")) or metadata["orbit_direction"]
     if direction:
-        direction = {"A": "ASCENDING", "D": "DESCENDING"}.get(direction.upper(), direction.upper())
+        direction = {"A": "ASCENDING", "D": "DESCENDING", "ASC": "ASCENDING", "DESC": "DESCENDING"}.get(direction.upper(), direction.upper())
+    frame_coverage_raw = first_string(row, ("frameCoverage", "coverage"))
+    frame_coverage = (
+        {"F": "FULL", "FULL": "FULL", "P": "PARTIAL", "PARTIAL": "PARTIAL"}.get(frame_coverage_raw.upper())
+        if frame_coverage_raw else metadata["frame_coverage"]
+    )
 
     return {
         "granule_name": name,
@@ -155,7 +160,7 @@ def normalize_product(row: dict[str, Any]) -> dict[str, Any] | None:
         "start_time_utc": start_time,
         "stop_time_utc": stop_time,
         "flight_direction": direction,
-        "frame_coverage": first_string(row, ("frameCoverage", "coverage")) or metadata["frame_coverage"],
+        "frame_coverage": frame_coverage,
         "footprint": row.get("geometry") or row.get("footprint"),
         "main_band_polarization": first_string(row, ("mainBandPolarization", "polarization")) or {
             "SH": "HH", "SV": "VV", "DH": "HH+HV", "DV": "VV+VH",
