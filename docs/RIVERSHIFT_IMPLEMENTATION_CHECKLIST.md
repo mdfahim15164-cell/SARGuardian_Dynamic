@@ -30,11 +30,11 @@ Evidence:
 - [x] Parse official single-acquisition GCOV granule names and preserve CRID, frame coverage, orbit, polarization and acquisition time.
 - [x] Use the documented ASF JSON response format and do not infer unknown maturity.
 - [x] Add multi-date comparability and per-date AOI footprint coverage audit.
-- [x] Add a manual GitHub Actions workflow for real ASF catalogue/footprint discovery without downloading data.
+- [x] Add a push/manual GitHub Actions workflow for CMR NISAR GCOV collection/footprint discovery without downloading data.
 - [x] Add a candidate Sirajganj–Kazipur search polygon, clearly marked NOT APPROVED.
 - [ ] Select and independently review the final Jamuna/Sirajganj study AOI and replace the candidate polygon.
 - [ ] Confirm the automatic or manually dispatched GitHub Actions GCOV audit completes with the team-approved AOI; download its catalogue/feasibility artifacts.
-- [ ] Review and save the actual ASF catalogue manifest for the selected AOI.
+- [ ] Review and save the actual NASA CMR UMM-G manifest for the selected AOI.
 - [ ] Confirm at least three comparable acquisitions exist for one event.
 - [ ] Confirm same maturity, frequency, diagonal term, orbit direction, relative track, bandwidth mode, processing type and compatible incidence geometry.
 - [ ] Confirm each selected acquisition date meets the approved AOI footprint-coverage threshold and covers the full analysis AOI.
