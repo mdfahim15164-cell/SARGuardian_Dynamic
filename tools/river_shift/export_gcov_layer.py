@@ -50,10 +50,10 @@ def export_layer(
 
     subdataset = matches[0]
     output.parent.mkdir(parents=True, exist_ok=True)
-    full_frame = output.with_name(output.stem + ".full-frame.tif")
-    clipped = output.with_name(output.stem + ".aoi.tif")
+    clipped = output.with_name(output.stem + ".aoi-intermediate.tif")
 
-    run(["gdal_translate", "-of", "GTiff", "-co", "TILED=YES", "-co", "COMPRESS=DEFLATE", subdataset, str(full_frame)])
+    # Warp the selected HDF5 subdataset directly to the AOI. This avoids first
+    # materializing a potentially multi-gigabyte full-frame raster.
     run([
         "gdalwarp", "-overwrite", "-of", "GTiff",
         "-cutline", aoi_wkt,
@@ -62,7 +62,7 @@ def export_layer(
         "-dstalpha",
         "-co", "TILED=YES",
         "-co", "COMPRESS=DEFLATE",
-        str(full_frame), str(clipped),
+        subdataset, str(clipped),
     ])
     run([
         "gdal_translate", "-of", "COG",
@@ -71,7 +71,6 @@ def export_layer(
         str(clipped), str(output),
     ])
 
-    full_frame.unlink(missing_ok=True)
     clipped.unlink(missing_ok=True)
     metadata = {
         "schema_version": 1,
