@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-BACKEND_ROOT = Path(__file__).resolve().parents[2] / "Backend"
+BACKEND_ROOT = Path(__file__).resolve().parents[3] / "Backend"
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from science_adapter.river_shift.data_access.gcov_reader import read_gcov
