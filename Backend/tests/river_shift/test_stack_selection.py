@@ -61,3 +61,43 @@ def test_stack_selector_does_not_mix_l_band_and_s_band():
     assert result["eligible_count"] == 2
     assert result["comparison_key"]["instrument_band"] == "L"
     assert len(result["excluded_scenes"]) == 1
+
+
+def _raster(*, x_shift=0.0, term="VVVV"):
+    import numpy as np
+    from pyproj import CRS
+    from science_adapter.river_shift.data_access.gcov_reader import GcovRaster
+
+    return GcovRaster(
+        power=np.ones((2, 3), dtype=np.float32),
+        valid_mask=np.ones((2, 3), dtype=bool),
+        x_coordinates=np.array([500005.0, 500015.0, 500025.0]) + x_shift,
+        y_coordinates=np.array([2800005.0, 2799995.0]),
+        crs_wkt=CRS.from_epsg(32646).to_wkt(),
+        epsg=32646,
+        frequency="A",
+        covariance_term=term,
+        source_path="synthetic.h5",
+        units="linear gamma0 power",
+    )
+
+
+def test_grid_validator_accepts_exact_same_grid():
+    from science_adapter.river_shift.data_access.stack_selection import validate_gcov_grid_stack
+
+    result = validate_gcov_grid_stack([_raster(), _raster()])
+    assert result["status"] == "grid_compatible"
+    assert result["pixel_area_m2"] == 100.0
+
+
+def test_grid_validator_rejects_shifted_origin_and_different_term():
+    import pytest
+    from science_adapter.river_shift.data_access.stack_selection import (
+        StackCompatibilityError,
+        validate_gcov_grid_stack,
+    )
+
+    with pytest.raises(StackCompatibilityError, match="xCoordinates"):
+        validate_gcov_grid_stack([_raster(), _raster(x_shift=10.0)])
+    with pytest.raises(StackCompatibilityError, match="covariance term"):
+        validate_gcov_grid_stack([_raster(), _raster(term="HHHH")])
