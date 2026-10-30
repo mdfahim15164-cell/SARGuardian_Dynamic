@@ -30,11 +30,27 @@ def test_search_gcov_uses_gcov_and_provisional():
     assert captured["dataset"] == "NISAR"
     assert captured["processingLevel"] == "GCOV"
     assert captured["dataMaturity"] == "PROVISIONAL"
+    assert result["requested_maturity_filter"] == "PROVISIONAL"
     assert result["catalogue_only"] is True
     assert result["data_downloaded"] is False
     assert result["scientific_analysis_performed"] is False
     assert result["result_count"] == 1
-    assert result["scenes"][0]["granule_name"] == "NISAR_TEST_GCOV.h5"
+    scene = result["scenes"][0]
+    assert scene["granule_name"] == "NISAR_TEST_GCOV.h5"
+    assert scene["data_maturity"] == "PROVISIONAL"
+    assert scene["catalogue_maturity_filter"] == "PROVISIONAL"
+    assert scene["maturity_evidence"] == "product_metadata"
+
+
+def test_missing_product_maturity_is_not_fabricated_from_query_filter():
+    class Product:
+        properties = {"fileName": "NISAR_TEST_GCOV.h5", "processingLevel": "GCOV"}
+
+    result = search_gcov(AOI, "2026-06-17", "2026-07-20", search_function=lambda **_: [Product()])
+    scene = result["scenes"][0]
+    assert scene["data_maturity"] is None
+    assert scene["catalogue_maturity_filter"] == "PROVISIONAL"
+    assert scene["maturity_evidence"] == "ASF query filter only"
 
 
 @pytest.mark.parametrize("bad_wkt", ["not wkt", "POINT (89 25)"])
