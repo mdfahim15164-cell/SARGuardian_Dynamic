@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isLandslideKnownPlaceAnalysisRoute, isLandslideResultsRoute, isLandslideRoute, navigatePath, normalizePathname } from './routing';
+import {
+  isLandslideKnownPlaceAnalysisRoute,
+  isLandslideResultsRoute,
+  isLandslideRoute,
+  isProtectedWorkspaceRoute,
+  isRiverShiftRoute,
+  navigatePath,
+  normalizePathname,
+} from './routing';
 
 describe('client-side route recognition', () => {
   it('normalizes query strings and hashes without changing the route', () => {
@@ -20,6 +28,15 @@ describe('client-side route recognition', () => {
     expect(isLandslideResultsRoute('/landslide/results?from=map')).toBe(true);
     expect(isLandslideResultsRoute('/landslide')).toBe(false);
     expect(isLandslideRoute('/')).toBe(false);
+  });
+
+  it('recognizes RiverShift as an independently protected workspace', () => {
+    expect(isRiverShiftRoute('/river-shift')).toBe(true);
+    expect(isRiverShiftRoute('/river-shift?source=home')).toBe(true);
+    expect(isRiverShiftRoute('/landslide')).toBe(false);
+    expect(isProtectedWorkspaceRoute('/river-shift')).toBe(true);
+    expect(isProtectedWorkspaceRoute('/landslide/results')).toBe(true);
+    expect(isProtectedWorkspaceRoute('/')).toBe(false);
   });
 
   it('pushes a route once and returns the normalized route for React state', () => {

@@ -8,3 +8,8 @@ requests>=2.32,<3
 # Test tooling
 httpx>=0.27,<1
 pytest>=8,<9
+
+# RiverShift metadata-only NISAR GCOV catalogue API
+asf_search>=9.0
+pyproj>=3.6
+shapely>=2.0
