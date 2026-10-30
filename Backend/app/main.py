@@ -45,6 +45,7 @@ from .displacements import (
     workflow_run_status,
 )
 from .models import CatalogResponse, CatalogSearchRequest
+from .river_shift import router as river_shift_router
 from .persistence import (
     PersistenceConfigurationError,
     PersistenceConflictError,
@@ -89,6 +90,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-SARGuardian-Google-Maps-Key"],
 )
+
+app.include_router(river_shift_router)
 
 
 @app.exception_handler(Exception)
