@@ -1,20 +1,31 @@
 from science_adapter.river_shift.data_access.scene_identity import parse_gcov_granule_identity
 
 
-EXAMPLE = (
-    "NISAR_L2_PR_GCOV_008_029_A_010_0005_NASV_A_"
-    "20251031T044409_20251031T044425_P05000_N_P_J_001.h5"
+OFFICIAL_EXAMPLE = (
+    "NISAR_L2_PR_GCOV_025_151_A_011_4005_DHDH_A_"
+    "20260718T155041_20260718T155059_P05023_N_P_J_001.h5"
 )
 
 
 def test_parse_official_gcov_product_name():
-    identity = parse_gcov_granule_identity(EXAMPLE)
+    identity = parse_gcov_granule_identity(OFFICIAL_EXAMPLE)
     assert identity is not None
-    assert identity["relative_orbit"] == "029"
+    assert identity["instrument_band"] == "L"
+    assert identity["processing_level"] == "L2"
+    assert identity["relative_orbit"] == "151"
     assert identity["flight_direction"] == "ASCENDING"
-    assert identity["frame_number"] == "010"
-    assert identity["crid"] == "P05000"
-    assert identity["start_time_utc"] == "2025-10-31T04:44:09Z"
+    assert identity["frame_number"] == "011"
+    assert identity["acquisition_mode"] == "4005"
+    assert identity["polarization_mode"] == "DHDH"
+    assert identity["crid"] == "P05023"
+    assert identity["start_time_utc"] == "2026-07-18T15:50:41Z"
+
+
+def test_s_band_is_preserved_as_a_distinct_instrument_band():
+    name = OFFICIAL_EXAMPLE.replace("NISAR_L2_", "NISAR_S2_")
+    identity = parse_gcov_granule_identity(name)
+    assert identity is not None
+    assert identity["instrument_band"] == "S"
 
 
 def test_malformed_name_is_not_guessed():
