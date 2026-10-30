@@ -442,6 +442,7 @@ def search_catalogue(
                 "request_url": query_url,
                 "reported_cmr_hits": collection_hits,
                 "records_received": collection_records,
+                "page_records_received": len(items),
             })
             if not items or collection_records >= collection_hits:
                 break
