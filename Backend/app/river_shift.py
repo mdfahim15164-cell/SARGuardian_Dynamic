@@ -266,22 +266,40 @@ def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalo
     if not params["frameCoverage"]:
         params.pop("frameCoverage")
 
-    url = f"{ASF_SEARCH_URL}?{urllib.parse.urlencode(params)}"
-    http_request = urllib.request.Request(
-        url,
-        headers={"Accept": "application/json", "User-Agent": "SARGuardian-RiverShift/0.1"},
-    )
-    try:
-        with urllib.request.urlopen(http_request, timeout=TIMEOUT_SECONDS) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise HTTPException(status_code=502, detail=f"ASF catalogue returned HTTP {exc.code}.") from None
-    except (urllib.error.URLError, TimeoutError):
-        raise HTTPException(status_code=504, detail="ASF catalogue request timed out or could not be reached.") from None
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        raise HTTPException(status_code=502, detail="ASF catalogue returned an invalid response.") from None
+    def execute_search(search_params: dict[str, str]) -> tuple[Any, str]:
+        search_url = f"{ASF_SEARCH_URL}?{urllib.parse.urlencode(search_params)}"
+        http_request = urllib.request.Request(
+            search_url,
+            headers={"Accept": "application/json", "User-Agent": "SARGuardian-RiverShift/0.1"},
+        )
+        try:
+            with urllib.request.urlopen(http_request, timeout=TIMEOUT_SECONDS) as response:
+                response_payload = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raise HTTPException(status_code=502, detail=f"ASF catalogue returned HTTP {exc.code}.") from None
+        except (urllib.error.URLError, TimeoutError):
+            raise HTTPException(status_code=504, detail="ASF catalogue request timed out or could not be reached.") from None
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise HTTPException(status_code=502, detail="ASF catalogue returned an invalid response.") from None
+        return response_payload, search_url
 
-    raw_rows = _extract_rows(payload)
+    payload, strict_url = execute_search(params)
+    strict_rows = _extract_rows(payload)
+    raw_rows = strict_rows
+    fallback_payload: Any = None
+    fallback_url: str | None = None
+    fallback_used = False
+
+    if not raw_rows:
+        broad_params = dict(params)
+        broad_params.pop("processingLevel", None)
+        fallback_payload, fallback_url = execute_search(broad_params)
+        broad_rows = _extract_rows(fallback_payload)
+        fallback_rows = [row for row in broad_rows if _product(row) is not None]
+        if fallback_rows:
+            raw_rows = fallback_rows
+            fallback_used = True
+
     products: list[RiverShiftProduct] = []
     for row in raw_rows:
         product = _product(row)
@@ -298,6 +316,10 @@ def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalo
         warnings.append("Some maturity values are unknown. Do not mix them into a BETA or PROVISIONAL time series.")
     if not products:
         warnings.append("No GCOV products passed the selected AOI, time, polarization and maturity filters.")
+    if not strict_rows and fallback_payload is not None and not fallback_used:
+        warnings.append("Both the strict GCOV query and broader NISAR query returned zero GCOV records.")
+    elif fallback_used:
+        warnings.append("The strict processingLevel=GCOV query returned zero records; GCOV products were found using a broader NISAR search and local official-name/product-level filtering.")
 
     status = "ready" if products else "no_data"
     message = (
@@ -318,6 +340,12 @@ def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalo
             "frame_coverage": request.frame_coverage,
             "archive": "ASF DAAC Search API",
             "response_format": "json",
+            "strict_gcove_record_count": len(strict_rows),
+            "broader_query_used": fallback_payload is not None,
+            "broader_query_record_count": len(_extract_rows(fallback_payload)) if fallback_payload is not None else 0,
+            "local_gcov_fallback_used": fallback_used,
+            "strict_query_url": strict_url,
+            "broader_query_url": fallback_url,
         },
         product_count=len(products),
         products=products,
