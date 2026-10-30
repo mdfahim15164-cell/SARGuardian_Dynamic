@@ -1,1 +1,0 @@
-"""Scientific validation helpers."""
