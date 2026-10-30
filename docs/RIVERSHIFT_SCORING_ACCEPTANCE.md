@@ -30,7 +30,7 @@ Evidence:
 - Synthetic algorithm tests plus independent real-world validation.
 Acceptance:
 - Time-series inputs meet acquisition comparability requirements.
-- Signed bankline displacement uses reviewed banklines, a declared transect direction, and rejects ambiguous multiple intersections.
+- Signed bankline displacement uses reviewed WGS84 GeoJSON banklines, a projected metre analysis CRS, a declared transect direction, and rejects ambiguous multiple intersections.
 - CRS, grid, units, maturity, frequency and polarization are recorded.
 - Report confusion matrix, precision, recall, F1 and IoU.
 - Label candidate morphology changes as candidates until independently corroborated.
