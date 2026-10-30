@@ -20,7 +20,7 @@ def parse_gcov_granule_identity(granule_name: str) -> dict[str, Any] | None:
     except ValueError:
         return None
     prefix, suffix = parts[:marker], parts[marker + 1:]
-    if not prefix or prefix[0] != "NISAR" or "L2" not in prefix:
+    if not prefix or prefix[0] != "NISAR" or not any(item in {"L2", "S2"} for item in prefix):
         return None
     instrument_level = next((item for item in prefix if item in {"L1", "L2", "L3", "S1", "S2", "S3"}), None)
     processing_type = next((item for item in prefix if item in {"PR", "UR", "OD"}), None)
