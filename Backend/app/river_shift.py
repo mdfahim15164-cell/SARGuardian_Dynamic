@@ -210,7 +210,7 @@ def search_gcov_catalogue(request: RiverShiftCatalogRequest) -> RiverShiftCatalo
         "intersectsWith": _polygon_wkt(coordinates),
         "start": f"{request.start_date.isoformat()}T00:00:00Z",
         "end": f"{request.end_date.isoformat()}T23:59:59Z",
-        "output": "json",
+        "output": "jsonlite",
         "maxResults": str(request.max_results),
     }
     if request.main_band_polarization:
