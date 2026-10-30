@@ -92,6 +92,16 @@ function metricLabel(key: string): string {
     intersection_over_union: 'Intersection over Union',
     cohen_kappa: 'Cohen’s kappa',
     area_bias_percent: 'Area bias',
+    mean_signed_displacement_m: 'Mean signed bank displacement',
+    median_signed_displacement_m: 'Median signed bank displacement',
+    p95_absolute_displacement_m: 'P95 absolute displacement',
+    mean_net_rate_m_per_year: 'Mean net movement rate',
+    channelward_count: 'Channelward transects',
+    landward_count: 'Landward transects',
+    unchanged_count: 'Unchanged transects',
+    valid_transect_count: 'Valid transects',
+    invalid_transect_count: 'Invalid transects',
+    transect_count: 'Total transects',
   };
   return names[key] || key.replaceAll('_', ' ');
 }
@@ -99,6 +109,7 @@ function metricLabel(key: string): string {
 function metricUnit(key: string): string {
   if (key.includes('km2')) return 'km²';
   if (key.includes('_ha')) return 'ha';
+  if (key.endsWith('_m_per_year')) return 'm/year';
   if (key.endsWith('_m')) return 'm';
   if (key.includes('percent')) return '%';
   return '';
@@ -116,7 +127,9 @@ function ReportPanel({ report }: { report: RiverShiftReport }) {
     ? 'Flood inundation screening'
     : report.analysis_type === 'river_morphology_screening'
       ? 'River morphology screening'
-      : 'Classification validation';
+      : report.analysis_type === 'classification_validation'
+        ? 'Classification validation'
+        : 'Bankline migration measurement';
   const source = report.source;
   return (
     <section className="rs-panel">
