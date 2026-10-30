@@ -209,22 +209,54 @@ def search_catalogue(
     if frame_coverage != "ALL":
         params["frameCoverage"] = frame_coverage
 
-    query_url = f"{ASF_SEARCH_URL}?{urllib.parse.urlencode(params)}"
-    request = urllib.request.Request(
-        query_url,
-        headers={"Accept": "application/json", "User-Agent": "SARGuardian-RiverShift/0.1"},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise RuntimeError(f"ASF Search API returned HTTP {exc.code}.") from None
-    except (urllib.error.URLError, TimeoutError):
-        raise RuntimeError("ASF Search API could not be reached before the timeout.") from None
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        raise RuntimeError("ASF Search API returned invalid JSON.") from None
+    def execute_search(search_params: dict[str, str]) -> tuple[Any, str]:
+        search_url = f"{ASF_SEARCH_URL}?{urllib.parse.urlencode(search_params)}"
+        http_request = urllib.request.Request(
+            search_url,
+            headers={"Accept": "application/json", "User-Agent": "SARGuardian-RiverShift/0.1"},
+        )
+        try:
+            with urllib.request.urlopen(http_request, timeout=timeout) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raise RuntimeError(f"ASF Search API returned HTTP {exc.code}.") from None
+        except (urllib.error.URLError, TimeoutError):
+            raise RuntimeError("ASF Search API could not be reached before the timeout.") from None
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise RuntimeError("ASF Search API returned invalid JSON.") from None
+        return payload, search_url
 
-    raw_rows = extract_rows(payload)
+    payload, query_url = execute_search(params)
+    initial_rows = extract_rows(payload)
+    raw_rows = initial_rows
+    fallback_payload: Any = None
+    fallback_rows: list[dict[str, Any]] = []
+    fallback_used = False
+    fallback_url: str | None = None
+
+    # If the strict GCOV product-level filter returns no records, make one
+    # diagnostic NISAR-only request. Identify GCOV locally from the official
+    # product-level metadata or strict single-acquisition filename token.
+    if not raw_rows:
+        broad_params = dict(params)
+        broad_params.pop("processingLevel", None)
+        fallback_payload, fallback_url = execute_search(broad_params)
+        fallback_rows = extract_rows(fallback_payload)
+
+        def is_gcov_record(row: dict[str, Any]) -> bool:
+            level = first_string(row, ("processingLevel", "productType", "scienceProduct"))
+            name = first_string(row, ("granuleName", "fileName", "sceneName", "fileID", "productName"))
+            tokens = name.removesuffix(".h5").split("_") if name else []
+            return bool(
+                (level and level.upper() == "GCOV")
+                or (len(tokens) == 18 and tokens[0] == "NISAR" and tokens[1] == "L2" and tokens[3] == "GCOV")
+            )
+
+        gcov_fallback_rows = [row for row in fallback_rows if is_gcov_record(row)]
+        if gcov_fallback_rows:
+            raw_rows = gcov_fallback_rows
+            fallback_used = True
+
     products = []
     for row in raw_rows:
         item = normalize_product(row)
@@ -247,6 +279,14 @@ def search_catalogue(
         warnings.append(
             "No products passed the requested product type and maturity filters. This is a catalogue result, not proof of no NISAR acquisitions."
         )
+    if not initial_rows and fallback_rows and not fallback_used:
+        warnings.append(
+            "The strict GCOV query and broader NISAR query both returned zero GCOV granules. Verify the AOI, dates, dataset/product filters and ASF collection availability."
+        )
+    elif fallback_used:
+        warnings.append(
+            "The strict processingLevel=GCOV query returned zero records, but a broader NISAR search returned GCOV granules by official product identity. Results were locally filtered by GCOV metadata/filename."
+        )
 
     return {
         "schema_version": 1,
@@ -265,9 +305,22 @@ def search_catalogue(
             "max_results": max_results,
             "endpoint": ASF_SEARCH_URL,
             "response_format": "json",
+            "local_gcov_fallback_used": fallback_used,
         },
-        "raw_record_count": len(raw_rows),
+        "raw_record_count": len(initial_rows),
         "product_count": len(products),
+        "search_diagnostics": {
+            "strict_query_url": query_url,
+            "strict_response_type": type(payload).__name__,
+            "strict_response_keys": sorted(payload.keys()) if isinstance(payload, dict) else None,
+            "strict_gcove_record_count": len(initial_rows),
+            "broader_query_used": fallback_payload is not None,
+            "broader_query_url": fallback_url,
+            "broader_response_type": type(fallback_payload).__name__ if fallback_payload is not None else None,
+            "broader_response_keys": sorted(fallback_payload.keys()) if isinstance(fallback_payload, dict) else None,
+            "broader_record_count": len(fallback_rows),
+            "local_gcov_filter_applied": fallback_used,
+        },
         "products": products,
         "warnings": warnings,
     }
