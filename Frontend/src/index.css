@@ -237,10 +237,13 @@ button { color: inherit; }
 .engine-content { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; }
 .engine-icon { display: block; width: 48px; height: 48px; margin-bottom: auto; padding-top: 104px; color: #fff; line-height: 1; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.32)); }
 .engine-icon svg { display: block; width: 48px; height: 48px; fill: rgba(255,255,255,0.16); stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.2; }
-.engine-name { margin-bottom: 11px; color: #fff; font: 700 17px 'Manrope', sans-serif; letter-spacing: -0.05em; text-shadow: 0 2px 12px rgba(0,0,0,0.35); }
+.engine-title-group { display: grid; gap: 3px; margin-bottom: 11px; }
+.engine-name { margin: 0; color: #fff; font: 700 17px 'Manrope', sans-serif; letter-spacing: -0.05em; text-shadow: 0 2px 12px rgba(0,0,0,0.35); }
+.engine-description { color: rgba(245, 255, 255, 0.88); font: 500 10px/1.35 'DM Sans', sans-serif; letter-spacing: 0.01em; text-shadow: 0 1px 7px rgba(0,0,0,0.45); }
 .engine-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .engine-status { padding: 7px 13px; border: 1px solid rgba(245, 255, 255, 0.58); border-radius: 20px; background: rgba(21, 57, 64, 0.5); color: #fff; font-size: 8px; font-weight: 700; letter-spacing: 0.14em; white-space: nowrap; text-shadow: 0 1px 5px rgba(0,0,0,0.26); }
 .engine-status.active { border: 0; background: #51efae; color: #0b4f47; box-shadow: 0 0 17px rgba(91, 255, 194, 0.28); }
+.engine-status.pilot { border-color: rgba(106, 233, 218, 0.86); background: rgba(29, 135, 135, 0.65); color: #e1fffb; }
 .arrow { display: grid; place-items: center; width: 31px; height: 31px; border: 1px solid rgba(255,255,255,0.44); border-radius: 50%; background: rgba(18, 72, 77, 0.5); color: #fff; font-size: 20px; line-height: 1; text-shadow: 0 1px 4px rgba(0,0,0,0.25); }
 
 .site-footer { width: min(1180px, calc(100% - 72px)); margin: 64px auto 26px; display: flex; justify-content: space-between; align-items: end; color: #f3ffff; font-size: 9px; font-weight: 600; letter-spacing: 0.27em; text-shadow: 0 1px 9px rgba(0, 30, 39, 0.5); }
@@ -281,6 +284,7 @@ button { color: inherit; }
   .engine-content { padding: 15px; }
   .engine-icon { padding-top: 87px; }
   .engine-name { font-size: 15px; }
+  .engine-description { font-size: 9px; }
   .engine-status { padding: 6px 8px; font-size: 7px; }
   .site-footer { width: calc(100% - 28px); margin-top: 38px; font-size: 7px; letter-spacing: 0.16em; }
   .footer-claim { text-align: right; }
