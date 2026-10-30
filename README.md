@@ -34,6 +34,7 @@ Each script has its own method, inputs, outputs, validation requirements, limita
 - [06 River morphology screening](tools/river_shift/README_06_run_morphology_analysis.md)
 - [07 Water classification validation](tools/river_shift/README_07_validate_water_classification.md)
 - [08 Signed bankline migration](tools/river_shift/README_08_measure_bankline_migration.md)
+- [08 Signed bankline migration](tools/river_shift/README_08_measure_bankline_migration.md)
 
 ### Current implementation status
 Implemented in this feature branch:
@@ -46,7 +47,7 @@ Implemented in this feature branch:
 - Signed transect-based bankline displacement measurement for reviewed bankline and transect inputs.
 - Separate public frontend route at /river-shift.
 - Catalogue, scientific-result and GeoJSON inspection UI.
-- Per-script scientific README files and regression tests.
+- Per-task and per-module scientific READMEs, signed bankline transect measurement, and regression tests.
 
 ### Not yet claimed
 A real Jamuna study event, available NISAR granule count, flood area, erosion area, accuracy score or measured migration rate has **not** been established by this code change. The first research milestone is a real AOI/GCOV data availability audit. The morphology boundary distance is a symmetric screening proxy. The separate signed transect tool requires independently digitised banklines and oriented transects; it is not an automatic NISAR bankline extractor. GCOV processing is currently run through local CLI tools; a durable cloud-dispatched RiverShift worker and Supabase job schema are future integration work.
