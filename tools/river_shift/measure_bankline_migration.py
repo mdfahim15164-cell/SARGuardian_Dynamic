@@ -13,7 +13,7 @@ def main() -> int:
     parser.add_argument("--before-bankline", required=True)
     parser.add_argument("--after-bankline", required=True)
     parser.add_argument("--transects", required=True)
-    parser.add_argument("--input-crs", required=True, help="Projected metre CRS, e.g. EPSG:32646.")
+    parser.add_argument("--analysis-crs", required=True, help="Projected metre CRS, e.g. EPSG:32646.")
     parser.add_argument("--before-date", required=True, help="YYYY-MM-DD")
     parser.add_argument("--after-date", required=True, help="YYYY-MM-DD")
     parser.add_argument("--positive-direction-label", required=True, help="Meaning of the transect start-to-end direction, e.g. toward_channel.")
@@ -27,7 +27,7 @@ def main() -> int:
             before_bankline_path=args.before_bankline,
             after_bankline_path=args.after_bankline,
             transects_path=args.transects,
-            input_crs=args.input_crs,
+            analysis_crs=args.analysis_crs,
             before_date=args.before_date,
             after_date=args.after_date,
             positive_direction_label=args.positive_direction_label,
