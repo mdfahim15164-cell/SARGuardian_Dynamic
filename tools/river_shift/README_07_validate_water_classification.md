@@ -52,7 +52,7 @@ The reference method is illustrative. Document how the actual mask was generated
 - Optical reference masks may have cloud, shadow, water-index and acquisition-date errors.
 - Reference and NISAR acquisition dates should be as close as possible to the same hydrological condition.
 - Report the reference method and sampling design, including class balance and uncertainty.
-- Bootstrap intervals quantify variation among the chosen spatial blocks only; they do not cover reference error, sensor error, geolocation or temporal mismatch. Fewer than eight valid blocks yields no interval.
+- Bootstrap intervals quantify variation among the chosen spatial blocks only; they do not cover reference error, sensor error, geolocation or temporal mismatch. Fewer than 20 valid blocks yields no interval.
 - Computed metrics remain PROVISIONAL until a reviewer verifies reference independence and quality.
 - A random pixel split can overstate generalization because nearby pixels are spatially autocorrelated. Prefer spatially separated validation samples.
 
