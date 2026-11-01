@@ -86,9 +86,28 @@ def test_signed_migration_measures_after_minus_before_chainage(tmp_path):
     assert result["inputs"]["positive_direction_label"] == "toward_channel"
     assert result["inputs"]["input_crs"] == "EPSG:4326"
     assert result["inputs"]["analysis_crs"] == "EPSG:32646"
+    assert result["quality"]["release_status"] == "PROVISIONAL"
+    assert result["uncertainty"]["status"] == "NOT_QUANTIFIED"
     assert (tmp_path / "result" / "bankline_migration.csv").exists()
     assert (tmp_path / "result" / "bankline_migration_transects.geojson").exists()
     assert (tmp_path / "result" / "bankline_migration_summary.json").exists()
+
+
+def test_position_uncertainty_is_propagated_to_per_transect_intervals(tmp_path):
+    before, after, transects = prepare_case(tmp_path)
+    result = measure_bankline_migration(
+        before_bankline_path=str(before), after_bankline_path=str(after),
+        transects_path=str(transects), analysis_crs="EPSG:32646",
+        before_date="2026-06-01", after_date="2026-09-01",
+        positive_direction_label="toward_channel", source_mission="NISAR",
+        source_product="GCOV", maturity="PROVISIONAL", output_dir=str(tmp_path / "uncertain"),
+        before_bankline_sigma_m=3.0, after_bankline_sigma_m=4.0,
+    )
+    assert result["uncertainty"]["status"] == "POSITION_ERROR_ONLY"
+    assert result["uncertainty"]["combined_displacement_sigma_m"] == pytest.approx(5.0)
+    row = result["transects"][0]
+    assert row["displacement_lower_95_m"] == pytest.approx(row["signed_displacement_m"] - 9.8, abs=0.1)
+    assert row["displacement_upper_95_m"] == pytest.approx(row["signed_displacement_m"] + 9.8, abs=0.1)
 
 
 def test_reversing_transect_direction_reverses_displacement_sign(tmp_path):

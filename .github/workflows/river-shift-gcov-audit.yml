@@ -54,6 +54,18 @@ on:
         required: true
         type: string
         default: "90"
+      frequency:
+        description: Frequency to check against each catalogue product's mode
+        required: true
+        type: choice
+        options: [frequencyA, frequencyB]
+        default: frequencyA
+      diagonal_term:
+        description: Requested real-valued diagonal GCOV term
+        required: true
+        type: choice
+        options: [HHHH, HVHV, VVVV, VHVH, RHRH, RVRV]
+        default: HHHH
 
 permissions:
   contents: read
@@ -94,6 +106,8 @@ jobs:
           MAIN_BAND_POLARIZATION: ${{ github.event.inputs.main_band_polarization || 'Any' }}
           FLIGHT_DIRECTION: ${{ github.event.inputs.flight_direction || 'Any' }}
           MINIMUM_COVERAGE: ${{ github.event.inputs.minimum_aoi_coverage_percent || '90' }}
+          FREQUENCY: ${{ github.event.inputs.frequency || 'frequencyA' }}
+          DIAGONAL_TERM: ${{ github.event.inputs.diagonal_term || 'HHHH' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -120,6 +134,8 @@ jobs:
             --catalogue "$RUNNER_TEMP/river-shift-audit/gcov-catalogue-manifest.json" \
             --minimum-dates 3 \
             --minimum-aoi-coverage-percent "$MINIMUM_COVERAGE" \
+            --frequency "$FREQUENCY" \
+            --term "$DIAGONAL_TERM" \
             --out "$RUNNER_TEMP/river-shift-audit/gcov-time-series-audit.json"
 
           python - "$RUNNER_TEMP/river-shift-audit/gcov-catalogue-manifest.json" "$RUNNER_TEMP/river-shift-audit/gcov-time-series-audit.json" <<'PY'
@@ -151,7 +167,9 @@ jobs:
           if len(sys.argv)>2:
               a=json.load(open(sys.argv[2], encoding="utf-8"))
               print("- **Time-series feasibility:** {}".format(a.get("status")))
-              print("- **Qualifying compatible stacks:** {}".format(a.get("metrics", {}).get("qualifying_group_count")))
+              print("- **Qualifying product-level review groups:** {}".format(a.get("metrics", {}).get("qualifying_group_count")))
+              selection = a.get("spatial_validation", {}).get("frequency_selection", {})
+              print("- **Requested layer / HDF5 verified:** {} / {}".format(selection.get("frequency") + "/" + selection.get("diagonal_term", ""), selection.get("verified_from_hdf5")))
               print("- **AOI area:** {} km²".format(a.get("spatial_validation", {}).get("aoi_area_km2")))
               print("")
               for warning in a.get("quality", {}).get("warnings", []):

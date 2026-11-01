@@ -68,6 +68,8 @@
 .rs-metric > span { color: #91acba; font-size: 10px; text-transform: capitalize; }.rs-metric strong { color: #e8f6f8; font: 700 20px 'Manrope', sans-serif; }.rs-metric small { color: #80cfc6; font: 500 10px 'DM Sans', sans-serif; }
 .rs-reference, .rs-warning-list { display: grid; gap: 6px; margin-top: 14px; padding: 13px; border-radius: 9px; color: #a4c0cb; background: rgba(91, 148, 165, .07); font-size: 10px; line-height: 1.6; }
 .rs-reference p, .rs-warning-list p { margin: 0; }.rs-warning-list strong { color: #e1c68b; }
+.rs-reference summary { color: #cce6ee; cursor: pointer; font-weight: 700; }
+.rs-reference pre { max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; color: #d3e4e9; font-size: 10px; }
 .rs-map-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(149, 194, 208, .14); }
 .rs-map { width: 100%; min-height: 430px; overflow: hidden; border: 1px solid rgba(149, 194, 208, .16); border-radius: 12px; background: #071d2c; }
 .rs-empty-state { display: grid; justify-items: center; gap: 8px; padding: 30px 15px; color: #8daab9; text-align: center; }

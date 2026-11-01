@@ -1,7 +1,7 @@
 # 09 · Audit GCOV time-series comparability and AOI coverage
 
 ## Purpose
-Determine whether a catalogue manifest contains at least three compatible NISAR GCOV acquisition dates for the same AOI. It groups products by maturity, orbit direction, relative orbit, bandwidth mode, polarization and processing configuration, then mosaics the product footprints available on each date and measures AOI coverage.
+Determine whether a catalogue manifest contains at least three NISAR GCOV acquisition dates suitable for product-level review for the same AOI. Groups must match maturity, direction, relative orbit, frame, bandwidth mode, polarization, processing type, observation source, CRID, orbit accuracy, frame coverage, center and requested frequency/diagonal term.
 
 ## Why this task is required
 Three catalogue hits are not automatically a valid time series. Products can belong to different viewing geometries, polarizations, modes, processing releases or partial frame footprints. Pixel-wise analysis must not start until this audit reports a qualifying group and a human reviews the selected granules.
@@ -27,7 +27,7 @@ Three catalogue hits are not automatically a valid time series. Products can bel
 Frame coverage (FULL or PARTIAL) is a NISAR product-frame metadata field. It is not the same quantity as the percentage of the user-defined AOI covered by a frame. The script checks the latter separately.
 
 ## Reproduce
-    python audit_gcov_acquisitions.py --catalogue data-audit/gcov-catalogue-manifest.json --minimum-dates 3 --minimum-aoi-coverage-percent 90 --out data-audit/gcov-time-series-audit.json
+    python audit_gcov_acquisitions.py --catalogue data-audit/nisar_gcov_candidate_manifest_2026-11-02.json --minimum-dates 3 --minimum-aoi-coverage-percent 90 --frequency frequencyA --term HHHH --out data-audit/nisar_gcov_candidate_audit_2026-11-02.json
 
 ## Live ASF workflow
 The repository contains a GitHub Actions workflow:
@@ -36,7 +36,7 @@ The repository contains a GitHub Actions workflow:
 It runs automatically when the GCOV catalogue/audit code or the workflow changes on the RiverShift feature branch. It can also be run manually from GitHub → Actions → RiverShift NISAR GCOV catalogue audit → Run workflow. For manual runs, replace the default candidate AOI with the team-approved WKT and choose the observation window/maturity. The default Sirajganj–Kazipur AOI is explicitly unapproved and must not be used as a final study boundary. The workflow uploads downloadable catalogue and footprint-audit JSON artefacts. No Earthdata download credential is needed for public catalogue search.
 
 ## Outputs
-- status: READY_FOR_THREE_DATE_SCREENING, INSUFFICIENT_COMPARABLE_ACQUISITIONS, or FOOTPRINT_DATA_INCOMPLETE.
+- status: READY_FOR_PRODUCT_LEVEL_COMPATIBILITY_CHECK, INSUFFICIENT_COMPARABLE_ACQUISITIONS, or FOOTPRINT_DATA_INCOMPLETE. READY only means proceed to HDF5, grid and mask review.
 - AOI area and UTM area-measurement CRS.
 - Every compatibility group and date-level AOI coverage percentage.
 - Granules selected for qualifying date groups.
@@ -45,7 +45,8 @@ It runs automatically when the GCOV catalogue/audit code or the workflow changes
 ## Acceptance tests
 - Three unique dates from one compatible signature and at least 90% AOI coverage pass.
 - Three dates on different relative orbits do not form one time series.
-- Different maturity, direction, bandwidth or polarization split into separate groups.
+- Different maturity, direction, relative orbit, frame, bandwidth, polarization, processing type, observation source, CRID, orbit accuracy, frame coverage or processing center split into separate groups.
+- A requested frequency/diagonal term must be encoded as available by that frequency's polarization code.
 - Partial footprints are unioned per date before area coverage is calculated.
 - Missing/invalid footprints cannot be assumed to cover the AOI.
 - A group with fewer than three eligible dates is not READY.

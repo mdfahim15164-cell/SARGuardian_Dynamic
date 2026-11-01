@@ -39,7 +39,7 @@ Synthetic tests verify the confusion matrix and F1/IoU calculations and require 
 - The report warns that a Sentinel-2-derived mask is a reference source, not automatic ground truth.
 
 ## Limitations
-A reference mask is not infallible. Cloud, shadow, temporal offset, water-index thresholds and manual digitization can introduce error. Spatial autocorrelation can make randomly sampled pixel validation optimistic. For generalization claims, use spatially separated validation areas.
+A reference mask is not infallible. Cloud, shadow, temporal offset, water-index thresholds and manual digitization can introduce error. The CLI resamples spatial blocks with replacement and reports 95% percentile intervals when at least 20 valid blocks are available. These intervals describe block-to-block variation at the chosen block size; they exclude reference-label and systematic sensor errors. Fewer than 20 blocks yields an explicit no-interval status. Validation provenance is marked complete only when the prediction hash matches an output mask in the adjacent RiverShift result report and that report contains NISAR GCOV granule IDs/checksums. Metrics remain provisional until a human reviewer confirms reference independence and suitability.
 
 ## References
 - Sentinel-2: https://dataspace.copernicus.eu/explore-data/data-collections/sentinel-data/sentinel-2

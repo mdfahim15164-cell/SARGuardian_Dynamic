@@ -23,6 +23,7 @@ def main() -> int:
     parser.add_argument("--maturity", choices=("BETA", "PROVISIONAL"), required=True)
     parser.add_argument("--frequency", choices=("frequencyA", "frequencyB"), default="frequencyA")
     parser.add_argument("--term", choices=("HHHH", "HVHV", "VVVV", "VHVH", "RHRH", "RVRV"), required=True)
+    parser.add_argument("--sensitivity-delta-db", type=float, default=2.0, help="Threshold robustness range; not a confidence interval.")
     parser.add_argument("--out-dir", required=True)
     args = parser.parse_args()
 
@@ -43,6 +44,7 @@ def main() -> int:
             maturity=args.maturity,
             frequency=args.frequency,
             polarization_term=args.term,
+            sensitivity_delta_db=args.sensitivity_delta_db,
         )
         metrics = result["metrics"]
         print(f"EROSION_CANDIDATE_HA={metrics['persistent_erosion_candidate_area_ha']:.3f}")

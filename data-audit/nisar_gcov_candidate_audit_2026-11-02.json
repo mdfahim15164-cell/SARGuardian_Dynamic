@@ -1,0 +1,909 @@
+{
+  "schema_version": 2,
+  "engine": "RiverShift",
+  "analysis_type": "gcov_time_series_feasibility_audit",
+  "status": "READY_FOR_PRODUCT_LEVEL_COMPATIBILITY_CHECK",
+  "source": {
+    "mission": "NISAR",
+    "instrument": "L-SAR",
+    "product": "GCOV",
+    "archive": "ASF DAAC"
+  },
+  "query": {
+    "aoi_wkt": "POLYGON ((89.62 24.43, 89.78 24.43, 89.78 24.68, 89.62 24.68, 89.62 24.43))",
+    "start_date": "2026-06-17",
+    "end_date": "2026-10-31",
+    "main_band_polarization": null,
+    "frame_coverage": "ALL",
+    "flight_direction": null,
+    "max_results": 1000,
+    "endpoint": "https://cmr.earthdata.nasa.gov/search/granules.umm_json_v1_6_7",
+    "response_format": "UMM-G 1.6.7",
+    "collection_short_names": [
+      "NISAR_L2_GCOV_PROVISIONAL_V1"
+    ],
+    "spatial_parameter": "polygon",
+    "temporal_parameter": "temporal[]"
+  },
+  "spatial_validation": {
+    "aoi_crs": "EPSG:4326",
+    "area_measurement_crs": "EPSG:32645",
+    "aoi_area_km2": 449.342,
+    "minimum_aoi_coverage_percent": 90.0,
+    "frequency_selection": {
+      "frequency": "frequencyA",
+      "diagonal_term": "HHHH",
+      "verified_from_hdf5": false
+    }
+  },
+  "acceptance": {
+    "minimum_unique_acquisition_dates": 3,
+    "requires_same_maturity": true,
+    "requires_same_orbit_direction": true,
+    "requires_same_relative_orbit": true,
+    "requires_same_frame": true,
+    "requires_same_bandwidth_mode": true,
+    "requires_same_polarization": true,
+    "requires_same_processing_type": true,
+    "requires_same_processing_center": true,
+    "requires_same_observation_source": true,
+    "requires_same_crid": true,
+    "requires_same_orbit_accuracy": true,
+    "requires_same_frame_coverage": true,
+    "requires_requested_frequency_and_diagonal_term": true,
+    "requires_aoi_footprint_coverage": true,
+    "requires_exact_raster_grid": true,
+    "requires_gcov_valid_sample_mask": true,
+    "catalogue_proves_raster_compatibility": false
+  },
+  "metrics": {
+    "catalogue_product_count": 34,
+    "compatible_signature_group_count": 9,
+    "qualifying_group_count": 3,
+    "products_rejected_or_not_groupable": 0,
+    "products_without_usable_footprint": 0
+  },
+  "groups": [
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "ASCENDING",
+      "relative_orbit": "069",
+      "bandwidth_mode": "4005",
+      "polarization_code": "DHDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 10,
+      "eligible_acquisition_dates": 10,
+      "dates": [
+        {
+          "acquisition_date": "2026-06-18",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_023_069_A_014_4005_DHDH_A_20260618T232135_20260618T232210_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-06-30",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_024_069_A_014_4005_DHDH_A_20260630T232134_20260630T232209_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-07-12",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_025_069_A_014_4005_DHDH_A_20260712T232134_20260712T232208_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-07-24",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_026_069_A_014_4005_DHDH_A_20260724T232133_20260724T232208_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-08-17",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_028_069_A_014_4005_DHDH_A_20260817T232132_20260817T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-08-29",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_029_069_A_014_4005_DHDH_A_20260829T232132_20260829T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-09-10",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_030_069_A_014_4005_DHDH_A_20260910T232131_20260910T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-09-22",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_031_069_A_014_4005_DHDH_A_20260922T232132_20260922T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-04",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_032_069_A_014_4005_DHDH_A_20261004T232132_20261004T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-16",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_033_069_A_014_4005_DHDH_A_20261016T232132_20261016T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        }
+      ],
+      "observation_source": "ACQUIRED_SINGLE_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "NEAR_REAL_TIME",
+      "frame_coverage": "FULL",
+      "processing_center": "J",
+      "frame": "014",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 40,
+        "expected_pixel_spacing_m": 10,
+        "polarization_code": "DH",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": true
+    },
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "ASCENDING",
+      "relative_orbit": "170",
+      "bandwidth_mode": "4005",
+      "polarization_code": "DHDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 9,
+      "eligible_acquisition_dates": 0,
+      "dates": [
+        {
+          "acquisition_date": "2026-06-25",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_023_170_A_014_4005_DHDH_A_20260625T232955_20260625T233029_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 86.321,
+          "passes_coverage_gate": false
+        },
+        {
+          "acquisition_date": "2026-07-07",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_024_170_A_014_4005_DHDH_A_20260707T232954_20260707T233028_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 85.644,
+          "passes_coverage_gate": false
+        },
+        {
+          "acquisition_date": "2026-07-19",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_025_170_A_014_4005_DHDH_A_20260719T232953_20260719T233028_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 86.062,
+          "passes_coverage_gate": false
+        },
+        {
+          "acquisition_date": "2026-08-12",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_027_170_A_014_4005_DHDH_A_20260812T232952_20260812T233026_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 86.34,
+          "passes_coverage_gate": false
+        },
+        {
+          "acquisition_date": "2026-08-24",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_028_170_A_014_4005_DHDH_A_20260824T232951_20260824T233026_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 86.076,
+          "passes_coverage_gate": false
+        },
+        {
+          "acquisition_date": "2026-09-05",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_029_170_A_014_4005_DHDH_A_20260905T232951_20260905T233026_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 86.03,
+          "passes_coverage_gate": false
+        },
+        {
+          "acquisition_date": "2026-09-29",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_031_170_A_014_4005_DHDH_A_20260929T232951_20260929T233026_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 86.07,
+          "passes_coverage_gate": false
+        },
+        {
+          "acquisition_date": "2026-10-11",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_032_170_A_014_4005_DHDH_A_20261011T232951_20261011T233026_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 86.297,
+          "passes_coverage_gate": false
+        },
+        {
+          "acquisition_date": "2026-10-23",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_033_170_A_014_4005_DHDH_A_20261023T232951_20261023T233026_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 86.102,
+          "passes_coverage_gate": false
+        }
+      ],
+      "observation_source": "ACQUIRED_SINGLE_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "NEAR_REAL_TIME",
+      "frame_coverage": "FULL",
+      "processing_center": "J",
+      "frame": "014",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 40,
+        "expected_pixel_spacing_m": 10,
+        "polarization_code": "DH",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": false
+    },
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "DESCENDING",
+      "relative_orbit": "019",
+      "bandwidth_mode": "2005",
+      "polarization_code": "DHDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 5,
+      "eligible_acquisition_dates": 5,
+      "dates": [
+        {
+          "acquisition_date": "2026-06-27",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_024_019_D_076_2005_DHDH_M_20260627T124243_20260627T124317_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-07-09",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_025_019_D_076_2005_DHDH_M_20260709T124242_20260709T124317_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-09-07",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_030_019_D_076_2005_DHDH_M_20260907T124240_20260907T124314_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-01",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_032_019_D_076_2005_DHDH_M_20261001T124240_20261001T124314_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-13",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_033_019_D_076_2005_DHDH_M_20261013T124240_20261013T124315_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        }
+      ],
+      "observation_source": "MIXED_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "NEAR_REAL_TIME",
+      "frame_coverage": "FULL",
+      "processing_center": "J",
+      "frame": "076",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 20,
+        "expected_pixel_spacing_m": 20,
+        "polarization_code": "DH",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": true
+    },
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "DESCENDING",
+      "relative_orbit": "019",
+      "bandwidth_mode": "2005",
+      "polarization_code": "QPDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 3,
+      "eligible_acquisition_dates": 3,
+      "dates": [
+        {
+          "acquisition_date": "2026-06-27",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_024_019_D_076_2005_QPDH_A_20260627T124253_20260627T124317_P05023_N_P_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-09-07",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_030_019_D_076_2005_QPDH_A_20260907T124250_20260907T124314_P05023_N_P_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-01",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_032_019_D_076_2005_QPDH_A_20261001T124250_20261001T124314_P05023_N_P_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        }
+      ],
+      "observation_source": "ACQUIRED_SINGLE_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "NEAR_REAL_TIME",
+      "frame_coverage": "PARTIAL",
+      "processing_center": "J",
+      "frame": "076",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 20,
+        "expected_pixel_spacing_m": 20,
+        "polarization_code": "QP",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": true
+    },
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "DESCENDING",
+      "relative_orbit": "019",
+      "bandwidth_mode": "4005",
+      "polarization_code": "DHDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 2,
+      "eligible_acquisition_dates": 2,
+      "dates": [
+        {
+          "acquisition_date": "2026-07-09",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_025_019_D_076_4005_DHDH_A_20260709T124252_20260709T124317_P05023_N_P_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-13",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_033_019_D_076_4005_DHDH_A_20261013T124250_20261013T124315_P05023_N_P_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        }
+      ],
+      "observation_source": "ACQUIRED_SINGLE_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "NEAR_REAL_TIME",
+      "frame_coverage": "PARTIAL",
+      "processing_center": "J",
+      "frame": "076",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 40,
+        "expected_pixel_spacing_m": 10,
+        "polarization_code": "DH",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": false
+    },
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "DESCENDING",
+      "relative_orbit": "019",
+      "bandwidth_mode": "4005",
+      "polarization_code": "DHDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 2,
+      "eligible_acquisition_dates": 2,
+      "dates": [
+        {
+          "acquisition_date": "2026-07-21",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_026_019_D_076_4005_DHDH_A_20260721T124241_20260721T124316_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-08-14",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_028_019_D_076_4005_DHDH_A_20260814T124240_20260814T124315_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        }
+      ],
+      "observation_source": "ACQUIRED_SINGLE_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "NEAR_REAL_TIME",
+      "frame_coverage": "FULL",
+      "processing_center": "J",
+      "frame": "076",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 40,
+        "expected_pixel_spacing_m": 10,
+        "polarization_code": "DH",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": false
+    },
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "DESCENDING",
+      "relative_orbit": "019",
+      "bandwidth_mode": "2005",
+      "polarization_code": "QPDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 1,
+      "eligible_acquisition_dates": 1,
+      "dates": [
+        {
+          "acquisition_date": "2026-08-26",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_029_019_D_076_2005_QPDH_A_20260826T124240_20260826T124315_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        }
+      ],
+      "observation_source": "ACQUIRED_SINGLE_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "NEAR_REAL_TIME",
+      "frame_coverage": "FULL",
+      "processing_center": "J",
+      "frame": "076",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 20,
+        "expected_pixel_spacing_m": 20,
+        "polarization_code": "QP",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": false
+    },
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "ASCENDING",
+      "relative_orbit": "170",
+      "bandwidth_mode": "4005",
+      "polarization_code": "DHDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 1,
+      "eligible_acquisition_dates": 0,
+      "dates": [
+        {
+          "acquisition_date": "2026-09-17",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_030_170_A_014_4005_DHDH_A_20260917T232951_20260917T233025_P05023_F_F_J_001"
+          ],
+          "aoi_coverage_percent": 86.172,
+          "passes_coverage_gate": false
+        }
+      ],
+      "observation_source": "ACQUIRED_SINGLE_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "FORECAST",
+      "frame_coverage": "FULL",
+      "processing_center": "J",
+      "frame": "014",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 40,
+        "expected_pixel_spacing_m": 10,
+        "polarization_code": "DH",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": false
+    },
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "DESCENDING",
+      "relative_orbit": "019",
+      "bandwidth_mode": "2005",
+      "polarization_code": "QPDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 1,
+      "eligible_acquisition_dates": 1,
+      "dates": [
+        {
+          "acquisition_date": "2026-09-19",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_031_019_D_076_2005_QPDH_A_20260919T124240_20260919T124314_P05023_F_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        }
+      ],
+      "observation_source": "ACQUIRED_SINGLE_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "FORECAST",
+      "frame_coverage": "FULL",
+      "processing_center": "J",
+      "frame": "076",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 20,
+        "expected_pixel_spacing_m": 20,
+        "polarization_code": "QP",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": false
+    }
+  ],
+  "qualifying_groups": [
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "ASCENDING",
+      "relative_orbit": "069",
+      "bandwidth_mode": "4005",
+      "polarization_code": "DHDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 10,
+      "eligible_acquisition_dates": 10,
+      "dates": [
+        {
+          "acquisition_date": "2026-06-18",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_023_069_A_014_4005_DHDH_A_20260618T232135_20260618T232210_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-06-30",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_024_069_A_014_4005_DHDH_A_20260630T232134_20260630T232209_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-07-12",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_025_069_A_014_4005_DHDH_A_20260712T232134_20260712T232208_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-07-24",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_026_069_A_014_4005_DHDH_A_20260724T232133_20260724T232208_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-08-17",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_028_069_A_014_4005_DHDH_A_20260817T232132_20260817T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-08-29",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_029_069_A_014_4005_DHDH_A_20260829T232132_20260829T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-09-10",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_030_069_A_014_4005_DHDH_A_20260910T232131_20260910T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-09-22",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_031_069_A_014_4005_DHDH_A_20260922T232132_20260922T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-04",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_032_069_A_014_4005_DHDH_A_20261004T232132_20261004T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-16",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_033_069_A_014_4005_DHDH_A_20261016T232132_20261016T232206_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        }
+      ],
+      "observation_source": "ACQUIRED_SINGLE_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "NEAR_REAL_TIME",
+      "frame_coverage": "FULL",
+      "processing_center": "J",
+      "frame": "014",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 40,
+        "expected_pixel_spacing_m": 10,
+        "polarization_code": "DH",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": true,
+      "selected_granule_names": [
+        "NISAR_L2_PR_GCOV_023_069_A_014_4005_DHDH_A_20260618T232135_20260618T232210_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_024_069_A_014_4005_DHDH_A_20260630T232134_20260630T232209_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_025_069_A_014_4005_DHDH_A_20260712T232134_20260712T232208_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_026_069_A_014_4005_DHDH_A_20260724T232133_20260724T232208_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_028_069_A_014_4005_DHDH_A_20260817T232132_20260817T232206_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_029_069_A_014_4005_DHDH_A_20260829T232132_20260829T232206_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_030_069_A_014_4005_DHDH_A_20260910T232131_20260910T232206_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_031_069_A_014_4005_DHDH_A_20260922T232132_20260922T232206_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_032_069_A_014_4005_DHDH_A_20261004T232132_20261004T232206_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_033_069_A_014_4005_DHDH_A_20261016T232132_20261016T232206_P05023_N_F_J_001"
+      ]
+    },
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "DESCENDING",
+      "relative_orbit": "019",
+      "bandwidth_mode": "2005",
+      "polarization_code": "DHDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 5,
+      "eligible_acquisition_dates": 5,
+      "dates": [
+        {
+          "acquisition_date": "2026-06-27",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_024_019_D_076_2005_DHDH_M_20260627T124243_20260627T124317_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-07-09",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_025_019_D_076_2005_DHDH_M_20260709T124242_20260709T124317_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-09-07",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_030_019_D_076_2005_DHDH_M_20260907T124240_20260907T124314_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-01",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_032_019_D_076_2005_DHDH_M_20261001T124240_20261001T124314_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-13",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_033_019_D_076_2005_DHDH_M_20261013T124240_20261013T124315_P05023_N_F_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        }
+      ],
+      "observation_source": "MIXED_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "NEAR_REAL_TIME",
+      "frame_coverage": "FULL",
+      "processing_center": "J",
+      "frame": "076",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 20,
+        "expected_pixel_spacing_m": 20,
+        "polarization_code": "DH",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": true,
+      "selected_granule_names": [
+        "NISAR_L2_PR_GCOV_024_019_D_076_2005_DHDH_M_20260627T124243_20260627T124317_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_025_019_D_076_2005_DHDH_M_20260709T124242_20260709T124317_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_030_019_D_076_2005_DHDH_M_20260907T124240_20260907T124314_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_032_019_D_076_2005_DHDH_M_20261001T124240_20261001T124314_P05023_N_F_J_001",
+        "NISAR_L2_PR_GCOV_033_019_D_076_2005_DHDH_M_20261013T124240_20261013T124315_P05023_N_F_J_001"
+      ]
+    },
+    {
+      "maturity": "PROVISIONAL",
+      "flight_direction": "DESCENDING",
+      "relative_orbit": "019",
+      "bandwidth_mode": "2005",
+      "polarization_code": "QPDH",
+      "processing_type": "PR",
+      "unique_acquisition_dates": 3,
+      "eligible_acquisition_dates": 3,
+      "dates": [
+        {
+          "acquisition_date": "2026-06-27",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_024_019_D_076_2005_QPDH_A_20260627T124253_20260627T124317_P05023_N_P_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-09-07",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_030_019_D_076_2005_QPDH_A_20260907T124250_20260907T124314_P05023_N_P_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        },
+        {
+          "acquisition_date": "2026-10-01",
+          "granule_count": 1,
+          "granule_names": [
+            "NISAR_L2_PR_GCOV_032_019_D_076_2005_QPDH_A_20261001T124250_20261001T124314_P05023_N_P_J_001"
+          ],
+          "aoi_coverage_percent": 100.0,
+          "passes_coverage_gate": true
+        }
+      ],
+      "observation_source": "ACQUIRED_SINGLE_MODE",
+      "crid": "P05023",
+      "orbit_accuracy": "NEAR_REAL_TIME",
+      "frame_coverage": "PARTIAL",
+      "processing_center": "J",
+      "frame": "076",
+      "frequency_selection": {
+        "frequency": "frequencyA",
+        "diagonal_term": "HHHH",
+        "bandwidth_code_mhz": 20,
+        "expected_pixel_spacing_m": 20,
+        "polarization_code": "QP",
+        "term_encoded_as_available": true,
+        "hdf5_layer_verified": false
+      },
+      "qualifies_for_product_level_review": true,
+      "selected_granule_names": [
+        "NISAR_L2_PR_GCOV_024_019_D_076_2005_QPDH_A_20260627T124253_20260627T124317_P05023_N_P_J_001",
+        "NISAR_L2_PR_GCOV_030_019_D_076_2005_QPDH_A_20260907T124250_20260907T124314_P05023_N_P_J_001",
+        "NISAR_L2_PR_GCOV_032_019_D_076_2005_QPDH_A_20261001T124250_20261001T124314_P05023_N_P_J_001"
+      ]
+    }
+  ],
+  "rejected_products": [],
+  "quality": {
+    "status": "READY_FOR_PRODUCT_LEVEL_COMPATIBILITY_CHECK",
+    "warnings": [
+      "This is catalogue and footprint feasibility only; no product bytes, raster values, water labels or scientific results were inspected.",
+      "The requested frequency and diagonal term are checked against the granule's encoded bandwidth/polarization mode only; inspect the exact HDF5 datasets before analysis.",
+      "Footprint coverage is not valid-pixel coverage. Apply the matching GCOV valid-sample mask, compare CRS/dimensions/affine grids, and review incidence geometry before pixel-wise analysis.",
+      "Mode 4005 means 40 MHz for Frequency A and 5 MHz for Frequency B; their expected pixel postings differ (10 m versus 80 m).",
+      "A common track and acquisition mode do not establish comparable water stage or a flood-event date; use official station observations."
+    ]
+  }
+}

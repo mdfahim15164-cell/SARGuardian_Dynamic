@@ -18,7 +18,9 @@ Scientific validity is a major NASA Space Apps score criterion. This script crea
 3. Exclude pixels invalid in either raster.
 4. Compute TP, TN, FP and FN.
 5. Calculate accuracy, precision, recall, specificity, F1, IoU, Cohen's kappa and water-area bias.
-6. Save the full confusion matrix and reference metadata.
+6. Resample spatial blocks with replacement and calculate percentile intervals for the classification metrics when at least 20 blocks contain valid pixels.
+7. Match the prediction checksum to a binary-mask output in the adjacent RiverShift report and carry forward the source granule IDs/checksums; otherwise mark validation provenance incomplete.
+8. Save the full confusion matrix, input hashes, reference metadata and uncertainty interpretation.
 
 Definitions:
     Precision = TP / (TP + FP)
@@ -27,7 +29,7 @@ Definitions:
     IoU = TP / (TP + FP + FN)
 
 ## Reproduce
-    python validate_water_classification.py --prediction results/flood/during_water_mask.tif --reference validation/sentinel2_reference_mask.tif --reference-source "Sentinel-2 SR supervised reference" --reference-date 2026-07-02 --reference-method "Cloud-screened Sentinel-2 water index with manual polygon review" --out results/validation/water_validation.json
+    python validate_water_classification.py --prediction results/flood/during_water_mask.tif --reference validation/sentinel2_reference_mask.tif --reference-source "Sentinel-2 SR supervised reference" --reference-date 2026-07-02 --reference-method "Cloud-screened Sentinel-2 water index with manual polygon review" --block-size-pixels 64 --bootstrap-replicates 500 --random-seed 42 --out results/validation/water_validation.json
 
 The reference method is illustrative. Document how the actual mask was generated, including cloud filtering, class rules, manual edits and date mismatch.
 
@@ -35,6 +37,7 @@ The reference method is illustrative. Document how the actual mask was generated
 - JSON confusion matrix.
 - Accuracy, precision, recall, specificity, F1, IoU, kappa and area-bias statistics.
 - Provenance fields for the reference source and date.
+- Spatial block-bootstrap 95% intervals, or an explicit too-few-blocks status below 20 blocks.
 
 ## Acceptance tests
 - Missing reference provenance fails.
@@ -49,6 +52,8 @@ The reference method is illustrative. Document how the actual mask was generated
 - Optical reference masks may have cloud, shadow, water-index and acquisition-date errors.
 - Reference and NISAR acquisition dates should be as close as possible to the same hydrological condition.
 - Report the reference method and sampling design, including class balance and uncertainty.
+- Bootstrap intervals quantify variation among the chosen spatial blocks only; they do not cover reference error, sensor error, geolocation or temporal mismatch. Fewer than eight valid blocks yields no interval.
+- Computed metrics remain PROVISIONAL until a reviewer verifies reference independence and quality.
 - A random pixel split can overstate generalization because nearby pixels are spatially autocorrelated. Prefer spatially separated validation samples.
 
 ## AI reviewer checklist

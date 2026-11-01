@@ -8,7 +8,7 @@ on:
       - "Frontend/**"
       - ".github/workflows/frontend-tests.yml"
   push:
-    branches: [main, feat/in-app-interactive-dashboard, fix/manual-aoi-target-fallback-20261027, fix/google-dashboard-in-frontend-20261028]
+    branches: [main, feat/in-app-interactive-dashboard, fix/manual-aoi-target-fallback-20261027, fix/google-dashboard-in-frontend-20261028, feature/river-shift-engine-label]
     paths:
       - "Frontend/**"
       - ".github/workflows/frontend-tests.yml"

@@ -16,12 +16,14 @@ def test_morphology_finds_persistent_erosion_and_deposition_candidates(tmp_path,
     result = run_morphology_analysis(
         before_path=str(paths[0]), post_one_path=str(paths[1]), post_two_path=str(paths[2]),
         output_dir=str(tmp_path / "out"), units="linear", threshold_db=-12.0,
-        use_otsu=False, maturity="PROVISIONAL", frequency="frequencyA", polarization_term="VVVV",
+        use_otsu=False, maturity="PROVISIONAL", frequency="frequencyA", polarization_term="HHHH",
     )
     metrics = result["metrics"]
     assert metrics["persistent_erosion_candidate_area_ha"] > 0
     assert metrics["persistent_deposition_candidate_area_ha"] > 0
     assert result["quality"]["status"] == "PERSISTENCE_SCREENED_NOT_INDEPENDENTLY_VALIDATED"
+    assert result["quality"]["release_status"] == "PROVISIONAL"
+    assert len(result["uncertainty"]["classification_threshold_sensitivity"]["scenarios"]) == 5
     assert (tmp_path / "out" / "erosion_candidates.geojson").exists()
     assert (tmp_path / "out" / "deposition_candidates.geojson").exists()
 

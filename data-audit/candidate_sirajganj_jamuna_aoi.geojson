@@ -15,9 +15,9 @@
         "status": "CANDIDATE_NOT_APPROVED",
         "study_area": "Jamuna River corridor, Sirajganj–Kazipur, Bangladesh",
         "purpose": "First NISAR GCOV catalogue and footprint-feasibility audit only",
-        "approximate_area_km2": 449.8,
+        "approximate_area_km2": 449.342,
         "not_a_final_bankline": true,
-        "notes": "Rectangular screening AOI chosen to include approximate Sirajganj Hard Point and Kazipur station locations. Replace with a river-corridor polygon before scientific analysis."
+        "notes": "Rectangular catalogue-screening AOI contains BWDB historical station anchors SW49 and SW49A. AOI and 2026 event dates remain unapproved pending river-corridor review and official stage observations. Replace with a reviewed corridor polygon before scientific analysis."
       },
       "geometry": {
         "type": "Polygon",

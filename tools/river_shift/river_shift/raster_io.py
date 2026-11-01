@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import re
 from pathlib import Path
 from typing import Any
 
@@ -168,3 +170,74 @@ def safe_float(value: float | np.floating[Any] | None) -> float | None:
     if value is None or not np.isfinite(value):
         return None
     return float(value)
+
+
+def sha256_file(path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda: stream.read(8 * 1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def read_gcov_sidecar(path: str | Path) -> dict[str, Any] | None:
+    """Read the exporter provenance sidecar adjacent to a GCOV-derived raster."""
+    raster_path = Path(path)
+    sidecar = raster_path.with_suffix(".metadata.json")
+    if not sidecar.is_file():
+        return None
+    try:
+        payload = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def validate_gcov_series(
+    paths: dict[str, str], *, maturity: str, frequency: str, term: str
+) -> tuple[list[dict[str, Any]], bool]:
+    """Fail closed on mixed GCOV provenance when exporter sidecars are present."""
+    records = [read_gcov_sidecar(path) for path in paths.values()]
+    if not any(records):
+        return [], False
+    if any(record is None for record in records):
+        raise RasterContractError("Every GCOV input must have its exporter metadata sidecar when any sidecar is supplied.")
+
+    required = (
+        "source_granule_name", "source_product_sha256", "output_cog", "output_cog_sha256",
+        "maturity", "frequency", "covariance_term",
+        "bandwidth_mode", "polarization_code", "processing_type", "flight_direction", "relative_orbit",
+        "frame", "crid", "orbit_accuracy", "frame_coverage", "observation_source",
+    )
+    normalized: list[dict[str, Any]] = []
+    for input_path, record in zip(paths.values(), records):
+        assert record is not None
+        missing = [key for key in required if not record.get(key)]
+        if missing:
+            raise RasterContractError("GCOV metadata sidecar is incomplete: " + ", ".join(missing) + ".")
+        for key in required:
+            if not isinstance(record.get(key), str):
+                raise RasterContractError(f"GCOV metadata sidecar field {key} must be text.")
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", record["source_product_sha256"]):
+            raise RasterContractError("GCOV metadata sidecar source_product_sha256 must be a 64-character SHA-256.")
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", record["output_cog_sha256"]):
+            raise RasterContractError("GCOV metadata sidecar output_cog_sha256 must be a 64-character SHA-256.")
+        raster_path = Path(input_path).resolve()
+        if Path(record["output_cog"]).resolve() != raster_path:
+            raise RasterContractError("GCOV input path does not match its metadata sidecar output_cog.")
+        if sha256_file(raster_path).lower() != record["output_cog_sha256"].lower():
+            raise RasterContractError("GCOV raster does not match its metadata sidecar output_cog_sha256.")
+        if record["maturity"].upper() != maturity.upper():
+            raise RasterContractError("GCOV maturity does not match the requested analysis maturity.")
+        if record["frequency"] != frequency or record["covariance_term"] != term:
+            raise RasterContractError("GCOV frequency/diagonal term does not match the requested analysis layer.")
+        normalized.append(record)
+
+    comparison_fields = (
+        "maturity", "frequency", "covariance_term", "bandwidth_mode", "polarization_code", "processing_type",
+        "flight_direction", "relative_orbit", "frame", "crid", "orbit_accuracy", "frame_coverage", "observation_source",
+    )
+    for field in comparison_fields:
+        if len({str(record[field]).upper() for record in normalized}) != 1:
+            raise RasterContractError(f"GCOV inputs do not share the same {field}; do not compare this stack.")
+    return normalized, True

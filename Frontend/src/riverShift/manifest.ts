@@ -7,6 +7,7 @@ export type RiverShiftReport = {
   reference?: Record<string, unknown>;
   method?: Record<string, unknown>;
   confusion_matrix?: Record<string, unknown>;
+  uncertainty?: Record<string, unknown>;
   metrics: Record<string, number | null>;
   quality: {
     status: string;
@@ -27,6 +28,28 @@ export type RiverShiftGeoJSON = {
     };
   }>;
 };
+
+export function isRiverShiftReportVerified(report: RiverShiftReport): boolean {
+  const quality = report.quality as Record<string, unknown>;
+  const verification = quality.verification;
+  if (!verification || typeof verification !== 'object') return false;
+  const record = verification as Record<string, unknown>;
+  return quality.release_status === 'VERIFIED'
+    && quality.provenance_complete === true
+    && typeof record.reviewer_id === 'string' && record.reviewer_id.trim().length > 0
+    && typeof record.reviewed_at_utc === 'string' && Number.isFinite(Date.parse(record.reviewed_at_utc))
+    && typeof record.evidence_reference === 'string' && record.evidence_reference.trim().length > 0
+    && typeof record.verification_record_sha256 === 'string'
+    && /^[0-9a-f]{64}$/i.test(record.verification_record_sha256);
+}
+
+export function isRiverShiftGeoJSONApproved(report: RiverShiftReport, sha256: string): boolean {
+  if (!isRiverShiftReportVerified(report) || !/^[0-9a-f]{64}$/i.test(sha256)) return false;
+  const approvedDigests = Object.entries(report.outputs || {})
+    .filter(([key, value]) => key.endsWith('_geojson_sha256') && typeof value === 'string')
+    .map(([, value]) => String(value).toLowerCase());
+  return approvedDigests.includes(sha256.toLowerCase());
+}
 
 export function parseRiverShiftReport(value: unknown): RiverShiftReport {
   if (!value || typeof value !== 'object') {
@@ -74,6 +97,7 @@ export function parseRiverShiftReport(value: unknown): RiverShiftReport {
     reference: candidate.reference as Record<string, unknown> | undefined,
     method: candidate.method as Record<string, unknown> | undefined,
     confusion_matrix: candidate.confusion_matrix as Record<string, unknown> | undefined,
+    uncertainty: candidate.uncertainty as Record<string, unknown> | undefined,
     metrics,
     quality: quality as RiverShiftReport['quality'],
     outputs: candidate.outputs as Record<string, unknown> | undefined,

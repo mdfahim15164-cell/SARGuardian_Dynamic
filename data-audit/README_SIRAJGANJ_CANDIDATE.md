@@ -1,42 +1,45 @@
-# Sirajganj–Kazipur Jamuna AOI (candidate only)
+# Sirajganj–Kazipur Jamuna candidate AOI
 
-## Status
-**CANDIDATE_NOT_APPROVED.** This polygon is supplied only to run the first NISAR GCOV catalogue/footprint audit. It is not a final scientific study boundary, bankline, flood extent, administrative boundary or field-validated corridor.
+## Approval status
 
-## WGS84 coordinates
-    POLYGON ((89.62 24.43, 89.78 24.43, 89.78 24.68, 89.62 24.68, 89.62 24.43))
+**AOI: CANDIDATE_NOT_APPROVED. Event timing: NOT_APPROVED.** The broad rectangle is for catalogue feasibility only. It is not a final scientific study boundary, active-channel corridor, bankline, flood extent, administrative boundary or field-validated area.
 
-Approximate area: 449.8 km² (spherical screening estimate). The audit script projects the polygon to the local UTM zone before calculating its area and footprint overlap.
+## Candidate geometry
 
-## Why this candidate
-The rectangular envelope is intended to include the Jamuna reach around Sirajganj Hard Point and Kazipur. Approximate reference locations used only to place the initial search window:
-- Sirajganj Hard Point: approximately 24.47893° N, 89.71322° E.
-- Sirajganj SW49 / Hard Point gauge: approximately 24.4685° N, 89.7196° E (secondary published station list; verify against the current BWDB/FFWC station registry).
-- Kazipur SW49A: approximately 24.6698° N, 89.6491° E (secondary published station list; verify against the current BWDB/FFWC station registry).
+```text
+POLYGON ((89.62 24.43, 89.78 24.43, 89.78 24.68, 89.62 24.68, 89.62 24.43))
+```
 
-The boundary is deliberately a broad rectangle because its first purpose is to determine whether NISAR GCOV frames intersect the target reach. It is not a substitute for a digitised river-corridor AOI. The final polygon should follow the intended active channel and adjacent floodplain and should be reviewed by the science team.
+The archived audit calculates 449.342 km² in UTM zone 45N (EPSG:32645). The candidate rectangle contains two official BWDB historical water-level station anchors: Sirajganj SW49 at 24.4685° N, 89.7196° E and Kazipur SW49A at 24.6698° N, 89.6491° E. BWDB's availability summary lists both station series from 2015 through 31 January 2026. Its station danger-level table lists 13.35 mPWD for SW49 and 15.24 mPWD for SW49A. These references anchor the search window; they do not establish a suitable corridor boundary.
 
-## Event window candidate
-The first acquisition audit uses 2026-06-17 through 2026-10-31, PROVISIONAL maturity only. A September 2026 high-water episode is a candidate event for later matching, but do not call a date the flood peak until the original FFWC/BWDB Sirajganj and Kazipur gauge time series has been downloaded and reviewed.
+## Live catalogue evidence captured 2026-11-02
 
-The reported August 9 episode should not be treated as a verified danger-level flood: the cited report stated that Sirajganj and Kazipur gauges were still below their danger levels on that date even though low-lying areas were inundated. The event date, stage and peak should come from the station series, not a news headline.
+The official ASF/CMR query covered 17 June–31 October 2026, PROVISIONAL GCOV, over the candidate rectangle. It returned 34 product records. The strongest product-level review group contains ten dates on ascending relative orbit 069/frame 014, mode 4005, DHDH, acquired single-mode, CRID P05023, near-real-time orbit accuracy, full frames and JPL processing. The requested Frequency-A HHHH term is encoded as available. For mode 4005, Frequency A uses 40 MHz and has an expected 10 m GCOV pixel spacing. Every selected date has 100% geometric footprint coverage of the candidate AOI.
 
-## Required before scientific analysis
-1. Confirm the final AOI and boundary with the team.
-2. Query ASF DAAC for actual NISAR Level-2 GCOV products and save the catalogue manifest.
-3. Run the footprint-coverage audit. Do not use products merely because their footprints intersect the AOI.
-4. Find at least three dates that meet the same maturity, direction, relative orbit, bandwidth/mode and polarization constraints, with a documented AOI-coverage threshold.
-5. Inspect the actual product footprints and acquisition geometry in GIS.
-6. Retrieve official FFWC/BWDB station water-level history for the same dates and choose before/event/post dates.
-7. Download exact selected granules, preserve their product IDs and SHA-256 receipts, then run the science scripts.
+The ten dates are 18 June, 30 June, 12 July, 24 July, 17 August, 29 August, 10 September, 22 September, 4 October and 16 October 2026. The NISAR guide records an instrument data gap from 27 July 22:03:25 UTC through 10 August 00:55:27 UTC, which explains the gap between 24 July and 17 August.
 
-## Sources / reference links
-- NISAR GCOV product naming, single-acquisition metadata and pixel-spacing guide: https://nisar-docs.asf.alaska.edu/gcov/
-- NISAR product naming convention: https://nisar-docs.asf.alaska.edu/naming-conventions/
-- ASF Search API and NISAR frameCoverage parameters: https://docs.asf.alaska.edu/api/keywords/
-- NASA NISAR Provisional collection availability and maturity: https://nisar-docs.asf.alaska.edu/availability-overview/
-- FFWC public portal and station information: https://ffwc.gov.bd/
-- Sirajganj Hard Point place reference: https://mapcarta.com/34912738
-- Daily Star report of the August 9 2026 Jamuna rise: https://www.thedailystar.net/news/bangladesh/news/jamuna-swells-sirajganj-low-lying-areas-inundated-4243436
+These are catalogue and footprint facts only. They do not establish valid-pixel coverage, HDF5 dataset presence, exact grid compatibility, a flood extent, river-bank migration, or a flood date. See the [CMR manifest](nisar_gcov_candidate_manifest_2026-11-02.json) and [product-level audit](nisar_gcov_candidate_audit_2026-11-02.json). A selected product URL redirected to Earthdata Login; no authenticated session was available, so no product bytes or HDF5 datasets were inspected.
 
-The candidate coordinates and the area estimate are screening aids. They are not verified hydrological boundaries.
+## Event timing gate
+
+The September acquisitions are candidate observations, not a verified flood peak. BWDB's published availability summary lists the Sirajganj and Kazipur series through 31 January 2026, and the FFWC observed-water-level page returned “No observed water level data available” during this review. Therefore the event date, stage and peak are **NOT_APPROVED** until the original official station observations covering the NISAR acquisition dates are retrieved and reviewed. Do not select a “during” image based on a news headline or catalogue date alone.
+
+## Required before scientific analysis or judging claims
+
+1. Have the science team approve a river-corridor AOI and document the boundary definition.
+2. Retrieve official BWDB/FFWC water levels for the acquisition window and choose stage-comparable dates.
+3. Authenticate with NASA Earthdata Login and download the exact same-frame product group; retain IDs and SHA-256 receipts.
+4. Inspect each HDF5 product and verify the selected Frequency-A HHHH dataset and matching mask.
+5. Compare CRS, dimensions and affine grids; quantify valid-mask coverage for each date and review incidence geometry.
+6. Process flood expansion separately from persistent river-bank/land transitions.
+7. Compare the water classification against an independent dated reference and independently review any banklines/transects.
+8. Keep all outputs PROVISIONAL until review evidence, provenance and uncertainty are complete.
+
+## Authoritative sources
+
+- [NISAR GCOV product guide](https://nisar-docs.asf.alaska.edu/gcov/)
+- [NISAR availability, CRID and data-gap notes](https://nisar-docs.asf.alaska.edu/availability-overview/)
+- [NASA Earthdata access and authentication guide](https://nisar-docs.asf.alaska.edu/earthaccess/)
+- [BWDB water-level station/data availability](https://www.hydrology.bwdb.gov.bd/includes/water_level_data_available_print.php)
+- [BWDB Brahmaputra–Jamuna station danger levels](https://en.bwdb.gov.bd/archive/pdf/6591.pdf)
+- [FFWC observed water-level page](https://ffwc.gov.bd/app/observed-water-level)

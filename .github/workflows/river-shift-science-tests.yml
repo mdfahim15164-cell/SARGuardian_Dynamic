@@ -7,8 +7,7 @@ on:
       - "tools/river_shift/**"
       - ".github/workflows/river-shift-science-tests.yml"
   push:
-    branches:
-      - main
+    branches: [main, feature/river-shift-engine-label]
     paths:
       - "tools/river_shift/**"
       - ".github/workflows/river-shift-science-tests.yml"

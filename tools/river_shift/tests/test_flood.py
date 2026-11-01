@@ -29,10 +29,14 @@ def test_flood_analysis_outputs_masks_metrics_and_provenance(tmp_path, raster_wr
         dates={"before": "2026-06-01", "during": "2026-07-01", "after": "2026-08-01"},
         maturity="PROVISIONAL",
         frequency="frequencyA",
-        polarization_term="VVVV",
+        polarization_term="HHHH",
     )
     assert result["source"]["product"] == "GCOV"
     assert result["quality"]["status"] == "SCREENING_NOT_INDEPENDENTLY_VALIDATED"
+    assert result["quality"]["release_status"] == "PROVISIONAL"
+    assert len(result["uncertainty"]["classification_threshold_sensitivity"]["scenarios"]) == 5
+    assert result["method"]["threshold_sensitivity_is_statistical_confidence_interval"] is False
+    assert len(result["outputs"]["new_water_geojson_sha256"]) == 64
     assert result["metrics"]["newly_water_covered_area_km2"] > 0
     assert (tmp_path / "out" / "newly_water_covered.geojson").exists()
     saved = json.loads((tmp_path / "out" / "river_shift_result.json").read_text())

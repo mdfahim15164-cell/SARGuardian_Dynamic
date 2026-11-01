@@ -39,13 +39,17 @@ def inspect_product(product: Path) -> dict[str, Any]:
     metadata = payload.get("metadata", {})
     subdatasets = metadata.get("SUBDATASETS", {})
     terms = []
+    masks = []
     for key, value in sorted(subdatasets.items()):
         if not key.endswith("_NAME") or not isinstance(value, str):
             continue
         path = value.rsplit(":", 1)[-1].lstrip("/")
         term = path.split("/")[-1]
+        frequency = next((part for part in path.split("/") if part in {"frequencyA", "frequencyB"}), None)
+        if term == "mask" and frequency:
+            masks.append({"frequency": frequency, "subdataset": value})
         if term in {"HHHH", "HVHV", "VVVV", "VHVH", "RHRH", "RVRV"}:
-            terms.append({"term": term, "subdataset": value})
+            terms.append({"frequency": frequency, "term": term, "subdataset": value})
     if not terms:
         raise RuntimeError(
             "No diagonal GCOV covariance layers were found. Check that the input is a NISAR GCOV product."
@@ -59,6 +63,7 @@ def inspect_product(product: Path) -> dict[str, Any]:
         "size": payload.get("size"),
         "coordinate_system": payload.get("coordinateSystem", {}).get("wkt"),
         "available_diagonal_terms": terms,
+        "available_valid_sample_masks": masks,
         "available_subdatasets": len(subdatasets) // 2,
         "notes": [
             "Diagonal covariance terms are real-valued backscatter power layers.",

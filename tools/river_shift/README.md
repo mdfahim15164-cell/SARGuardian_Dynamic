@@ -63,16 +63,16 @@ Read these task-specific documents before each script:
 - README_09_audit_gcov_acquisitions.md
 
 ## Bankline transect measurement
-For a signed bankline movement measurement, digitise two dated banklines and user-oriented transects, then place all three GeoJSON files in the same projected metre CRS. GeoJSON is normally WGS84 under RFC 7946, so this workflow explicitly uses non-standard projected coordinates; document the CRS in `--input-crs` and do not publish those files as generic WGS84 GeoJSON. Each transect must intersect each bankline exactly once; ambiguous braided-channel intersections are rejected. The sign convention is start-to-end along the transect and must be declared in `--positive-direction-label`.
+For signed bankline movement, supply two dated banklines and user-oriented transects as standard WGS84 GeoJSON. The tool reprojects those inputs into the declared projected metre `--analysis-crs` before measuring. Each transect must intersect each bankline exactly once; ambiguous braided-channel intersections are rejected. The sign convention is start-to-end along the transect and must be declared in `--positive-direction-label`.
 
 See `README_08_measure_bankline_migration.md` and `river_shift/README_06_transects.md` before running it.
 
 ### GCOV time-series feasibility audit
-Run `audit_gcov_acquisitions.py` against the NASA CMR CMR UMM-G 1.6.7 catalogue manifest before downloading or analysing products. It requires a minimum of three distinct acquisition dates, the same maturity/orbit/track/bandwidth/polarization/processing type, and sufficient footprint-union coverage of the same AOI on each date. The default minimum is 90%; the team can raise it when the AOI is smaller and full coverage is needed.
+Run `audit_gcov_acquisitions.py` against the NASA CMR UMM-G 1.6.7 catalogue manifest before downloading or analysing products. It requires at least three dates matching maturity, direction, relative orbit, frame, bandwidth, polarization, processing type, observation source, CRID, orbit accuracy, frame coverage and center; the requested frequency/diagonal term must be encoded as available. Each date must meet the AOI footprint threshold. This is only a product-level review gate; HDF5 layers, valid masks and exact grids remain to be checked. The default minimum is 90%.
 
 The GitHub Actions workflow `.github/workflows/river-shift-gcov-audit.yml` runs public catalogue discovery and footprint feasibility without downloading imagery. It runs automatically when the catalogue/audit code or audit workflow changes on this feature branch, and it can also be launched manually with a team-approved AOI/date window. The default Sirajganj–Kazipur AOI is explicitly a candidate and is not approved.
 
-A workflow definition is not itself evidence of an ASF query. Confirm a completed Actions run, download its catalogue and feasibility JSON artefacts, then review every selected date/footprint before starting a time series.
+The archived live catalogue evidence is linked from the root README and judge guide. Catalogue footprint coverage is not valid raster coverage. The selected public product links redirect to Earthdata Login, so current HDF5 compatibility remains blocked pending an authenticated download. The exporter requires the exact-granule `.download.json` receipt, checks its maturity and source host, and binds the output COG to the sidecar with SHA-256 before analysis.
 
 ## Data-comparability gate
 Before pixel-wise comparison, verify:
@@ -119,7 +119,7 @@ Every JSON result should retain:
 - Software versions.
 - Validation status and warnings.
 
-Do not display sample values as measurements. The frontend accepts only generated result JSON and GeoJSON produced by these scripts.
+Do not display sample values as measurements. The dashboard requires an explicit VERIFIED release flag, complete provenance and a review evidence record before showing metrics. A GeoJSON is drawn only when its SHA-256 matches an output checksum in the report. This imported JSON gate records a human review assertion; reviewers must retain the evidence referenced by the report.
 
 ## Test suite
 From this folder:

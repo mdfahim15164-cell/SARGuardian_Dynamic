@@ -10,7 +10,7 @@ NISAR time-series observations can reveal changes in river boundaries. This task
 - Before-event bankline as GeoJSON LineString/MultiLineString.
 - After-event bankline as GeoJSON LineString/MultiLineString.
 - Transect lines as GeoJSON LineString features.
-- A projected metre CRS for all three vector inputs, e.g. the appropriate UTM zone.
+- Standard WGS84 coordinates for all three GeoJSON inputs and a separate projected metre analysis CRS, e.g. the appropriate UTM zone.
 - Before and after observation dates.
 - A user-declared positive-direction label that matches the orientation from each transect's first coordinate to its last coordinate.
 - Source mission/product and maturity metadata.
@@ -36,6 +36,8 @@ Prepare three vector GeoJSON files in EPSG:4326 (WGS84). The analysis CRS is sel
 
     python measure_bankline_migration.py --before-bankline data/vector/bankline_before.geojson --after-bankline data/vector/bankline_after.geojson --transects data/vector/transects.geojson --analysis-crs EPSG:32646 --before-date 2026-06-01 --after-date 2026-09-01 --positive-direction-label toward_channel --source-mission NISAR --source-product GCOV --maturity PROVISIONAL --out-dir results/bankline-migration
 
+When both line-position standard deviations are known, add `--before-bankline-sigma-m 5 --after-bankline-sigma-m 5`. This produces per-transect approximate 95% position-error intervals. If omitted, positional uncertainty is explicitly marked `NOT_QUANTIFIED`.
+
 The dates, CRS, positive direction and file paths are illustrative. Use the actual CRS and dates associated with the chosen study area.
 
 ## Outputs
@@ -48,6 +50,7 @@ The dates, CRS, positive direction and file paths are illustrative. Use the actu
 - Valid/invalid transect counts.
 - Mean and median signed displacement (m).
 - P95 absolute displacement (m).
+- Per-transect approximate 95% position-error intervals when both bankline uncertainties are supplied.
 - Mean net rate between the selected dates (m/year).
 - Positive, negative and unchanged transect counts.
 
@@ -69,9 +72,10 @@ The dates, CRS, positive direction and file paths are illustrative. Use the actu
 - A braided river may intersect one transect many times. Such transects are flagged as ambiguous by this implementation; use a separately defined outer active-channel belt bankline if that is the research target.
 - A positive sign means only the user-declared transect direction. It is not inherently erosion or accretion until the digitizing orientation and which bank is being measured are interpreted correctly.
 - Two-date net rates are not forecasts and do not establish causality.
+- Position intervals assume independent, isotropic Gaussian errors and exclude stage mismatch, geolocation, transect-placement and bankline-definition uncertainty. They are not a complete uncertainty budget.
 
 ## AI reviewer checklist
-- Verify the same projected metre CRS is used for banklines and transects.
+- Verify GeoJSON input coordinates are WGS84 and the declared target analysis CRS is projected metres.
 - Verify each transect is oriented consistently and the positive direction label is explicit.
 - Verify exact-one-intersection rules are enforced.
 - Verify displacement is after chainage minus before chainage.

@@ -20,6 +20,8 @@ def main() -> int:
     parser.add_argument("--source-mission", default="NISAR")
     parser.add_argument("--source-product", default="GCOV")
     parser.add_argument("--maturity", choices=("BETA", "PROVISIONAL", "UNKNOWN"), required=True)
+    parser.add_argument("--before-bankline-sigma-m", type=float, help="Optional 1-sigma bankline position error in metres.")
+    parser.add_argument("--after-bankline-sigma-m", type=float, help="Optional 1-sigma bankline position error in metres.")
     parser.add_argument("--out-dir", required=True)
     args = parser.parse_args()
     try:
@@ -35,6 +37,8 @@ def main() -> int:
             source_product=args.source_product,
             maturity=args.maturity,
             output_dir=args.out_dir,
+            before_bankline_sigma_m=args.before_bankline_sigma_m,
+            after_bankline_sigma_m=args.after_bankline_sigma_m,
         )
         metrics = result["metrics"]
         print("VALID_TRANSECTS=" + str(metrics["valid_transect_count"]))

@@ -30,9 +30,9 @@ New water coverage is defined as:
 The reported area is new water coverage relative to the before-event image. It is not automatically a verified floodplain inundation area.
 
 ## Reproduce
-    python run_flood_analysis.py --before data/processed/before.tif --during data/processed/during.tif --after data/processed/after.tif --before-date 2026-06-01 --during-date 2026-07-01 --after-date 2026-08-01 --threshold-db -12 --input-units linear --maturity PROVISIONAL --frequency frequencyA --term VVVV --out-dir results/flood
+    python run_flood_analysis.py --before data/processed/before.tif --during data/processed/during.tif --after data/processed/after.tif --before-date 2026-06-01 --during-date 2026-07-01 --after-date 2026-08-01 --threshold-db -12 --input-units linear --maturity PROVISIONAL --frequency frequencyA --term HHHH --out-dir results/flood
 
-The threshold is only an example. Determine and document a site-specific threshold using independent reference observations; do not adopt -12 dB as a universal water threshold.
+The threshold and dates are examples. Determine a site-specific threshold using independent reference observations; do not adopt -12 dB as universal. The result includes a five-threshold sensitivity table. This is a deterministic robustness check, not a confidence interval. The release status remains PROVISIONAL until review evidence is supplied.
 
 ## Outputs
 - Before/during/after water masks.

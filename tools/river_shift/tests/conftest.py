@@ -10,6 +10,7 @@ from rasterio.transform import from_origin
 def raster_writer(tmp_path: Path):
     def write(name: str, array: np.ndarray, crs: str = "EPSG:32646") -> Path:
         path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
         profile = {
             "driver": "GTiff",
             "height": int(array.shape[0]),

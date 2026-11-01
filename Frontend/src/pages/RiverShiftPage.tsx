@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
 import type { RiverShiftGeoJSON, RiverShiftReport } from '../riverShift/manifest';
-import { parseRiverShiftGeoJSON, parseRiverShiftReport } from '../riverShift/manifest';
+import { isRiverShiftGeoJSONApproved, isRiverShiftReportVerified, parseRiverShiftGeoJSON, parseRiverShiftReport } from '../riverShift/manifest';
 import './river-shift.css';
 
 type Props = { onHome: () => void };
@@ -125,6 +125,11 @@ function metricText(key: string, value: number | null): string {
 }
 
 function ReportPanel({ report }: { report: RiverShiftReport }) {
+  const verified = isRiverShiftReportVerified(report);
+  const verification = report.quality.verification;
+  const verificationRecord = verification && typeof verification === 'object'
+    ? verification as Record<string, unknown>
+    : null;
   const warnings = report.quality.warnings || [];
   const title = report.analysis_type === 'flood_inundation_screening'
     ? 'Flood inundation screening'
@@ -147,13 +152,30 @@ function ReportPanel({ report }: { report: RiverShiftReport }) {
         <span>Frequency: <strong>{String(source.frequency || 'Not stated')}</strong></span>
         <span>Term: <strong>{String(source.covariance_term || 'Not stated')}</strong></span>
       </div>
-      <div className="rs-metric-grid">
+      <div className="rs-warning-inline" role="status">
+        Release status: <strong>{String(report.quality.release_status || 'PROVISIONAL')}</strong>
+        {!verified && <span> · Metrics and map are held until a complete review record is supplied.</span>}
+      </div>
+      {verified && <div className="rs-metric-grid">
         {Object.entries(report.metrics).map(([key, value]) => (
           <article className="rs-metric" key={key}>
             <span>{metricLabel(key)}</span>
             <strong>{metricText(key, value)} <small>{metricUnit(key)}</small></strong>
           </article>
         ))}
+      </div>}
+      {verified && verificationRecord && (
+        <div className="rs-reference">
+          Review record: <strong>{String(verificationRecord.reviewer_id)}</strong>
+          <span>{String(verificationRecord.reviewed_at_utc)}</span>
+          <p>Evidence: {String(verificationRecord.evidence_reference)}</p>
+        </div>
+      )}
+      <div className="rs-warning-list">
+        <strong>Input provenance</strong>
+        <p>Granules: {Array.isArray(source.granule_names) && source.granule_names.length ? source.granule_names.join(', ') : 'No NISAR granule IDs recorded'}</p>
+        <p>Source checksums: {Array.isArray(source.source_granule_sha256) && source.source_granule_sha256.length ? source.source_granule_sha256.join(', ') : 'No source product checksums recorded'}</p>
+        {report.inputs && <p>Input checksums: {JSON.stringify(report.inputs.input_sha256 || 'Not recorded')}</p>}
       </div>
       {report.reference && (
         <div className="rs-reference">
@@ -161,6 +183,12 @@ function ReportPanel({ report }: { report: RiverShiftReport }) {
           <span>{String(report.reference.date || 'Date not stated')}</span>
           <p>{String(report.reference.method || 'Reference method not stated')}</p>
         </div>
+      )}
+      {report.uncertainty && (
+        <details className="rs-reference">
+          <summary>Uncertainty and sensitivity details</summary>
+          <pre>{JSON.stringify(report.uncertainty, null, 2)}</pre>
+        </details>
       )}
       {warnings.length > 0 && (
         <div className="rs-warning-list">
@@ -186,7 +214,9 @@ export function RiverShiftPage({ onHome }: Props) {
   const [report, setReport] = useState<RiverShiftReport | null>(null);
   const [reportError, setReportError] = useState('');
   const [geoJSON, setGeoJSON] = useState<RiverShiftGeoJSON | null>(null);
+  const [geoJSONSha256, setGeoJSONSha256] = useState('');
   const [geoJSONError, setGeoJSONError] = useState('');
+  const geoJSONApproved = report && geoJSON ? isRiverShiftGeoJSONApproved(report, geoJSONSha256) : false;
   const [mapError, setMapError] = useState('');
   const mapElement = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
@@ -229,6 +259,8 @@ export function RiverShiftPage({ onHome }: Props) {
     if (!file) return;
     setReportError('');
     setReport(null);
+    setGeoJSON(null);
+    setGeoJSONSha256('');
     try {
       const payload = JSON.parse(await file.text()) as unknown;
       setReport(parseRiverShiftReport(payload));
@@ -241,8 +273,12 @@ export function RiverShiftPage({ onHome }: Props) {
     if (!file) return;
     setGeoJSONError('');
     setGeoJSON(null);
+    setGeoJSONSha256('');
     try {
-      const payload = JSON.parse(await file.text()) as unknown;
+      const bytes = await file.arrayBuffer();
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      setGeoJSONSha256(Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(''));
+      const payload = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
       setGeoJSON(parseRiverShiftGeoJSON(payload));
     } catch (error) {
       setGeoJSONError(error instanceof Error ? error.message : 'Could not read the GeoJSON.');
@@ -272,7 +308,7 @@ export function RiverShiftPage({ onHome }: Props) {
       });
       mapInstance.current = map;
       map.data.forEach((feature) => map.data.remove(feature));
-      if (geoJSON) {
+      if (geoJSON && geoJSONApproved) {
         map.data.addGeoJson(geoJSON as unknown as object);
         map.data.setStyle((feature) => {
           const name = String(feature.getProperty('class') || feature.getProperty('change_type') || '').toLowerCase();
@@ -292,7 +328,7 @@ export function RiverShiftPage({ onHome }: Props) {
       if (!cancelled) setMapError(error instanceof Error ? error.message : 'Google Maps could not be loaded.');
     });
     return () => { cancelled = true; };
-  }, [geoJSON]);
+  }, [geoJSON, geoJSONApproved]);
 
   const resultType = useMemo(() => report ? report.analysis_type.replace(/_/g, ' ') : 'No result imported', [report]);
 
@@ -450,8 +486,9 @@ export function RiverShiftPage({ onHome }: Props) {
         <section className="rs-map-section">
           <div className="rs-section-heading"><div><p className="rs-kicker">GEOSPATIAL OUTPUT</p><h3>Change map</h3></div></div>
           {mapError && <p className="rs-warning-inline">{mapError}</p>}
-          <div className="rs-map" ref={mapElement} role="img" aria-label="Satellite basemap with imported RiverShift GeoJSON change polygons" />
-          {geoJSON && <p className="rs-muted">{geoJSON.features.length} GeoJSON feature(s) loaded. Use the layer and date legend from the source report when interpreting polygons.</p>}
+          <div className="rs-map" ref={mapElement} role="img" aria-label="Satellite basemap; RiverShift change polygons are displayed only for verified reports" />
+          {geoJSON && geoJSONApproved && <p className="rs-muted">{geoJSON.features.length} verified GeoJSON feature(s) displayed; its SHA-256 matches the report. Use the source report's date and legend when interpreting polygons.</p>}
+          {geoJSON && !geoJSONApproved && <p className="rs-warning-inline" role="status">GeoJSON is loaded for review but is not drawn because the report is unverified or its recorded output checksum does not match.</p>}
         </section>
         {!report && <div className="rs-empty-state"><strong>{resultType}</strong><p>No scientific result is loaded. Run a script and import its JSON report; no demo measurement is shown here.</p></div>}
       </section>

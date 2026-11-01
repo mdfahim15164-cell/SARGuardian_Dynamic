@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import statistics
 from datetime import date
@@ -93,6 +94,8 @@ def measure_bankline_migration(
     source_product: str,
     maturity: str,
     output_dir: str,
+    before_bankline_sigma_m: float | None = None,
+    after_bankline_sigma_m: float | None = None,
 ) -> dict[str, Any]:
     """Measure signed bankline movement using WGS84 GeoJSON and a metric analysis CRS.
 
@@ -114,6 +117,23 @@ def measure_bankline_migration(
         raise ValueError("positive_direction_label is required.")
     if maturity not in {"BETA", "PROVISIONAL", "UNKNOWN"}:
         raise ValueError("maturity must be BETA, PROVISIONAL or UNKNOWN.")
+    if (before_bankline_sigma_m is None) != (after_bankline_sigma_m is None):
+        raise ValueError("Provide both bankline position uncertainty values or neither.")
+    for label, value in (("before_bankline_sigma_m", before_bankline_sigma_m), ("after_bankline_sigma_m", after_bankline_sigma_m)):
+        if value is not None and (not np.isfinite(value) or value < 0):
+            raise ValueError(f"{label} must be finite and non-negative.")
+    combined_sigma = (
+        float(np.hypot(before_bankline_sigma_m, after_bankline_sigma_m))
+        if before_bankline_sigma_m is not None and after_bankline_sigma_m is not None
+        else None
+    )
+
+    def file_sha256(path: str | Path) -> str:
+        digest = hashlib.sha256()
+        with Path(path).open("rb") as stream:
+            for block in iter(lambda: stream.read(8 * 1024 * 1024), b""):
+                digest.update(block)
+        return digest.hexdigest()
 
     before_bankline = _load_bankline(before_bankline_path, to_analysis)
     after_bankline = _load_bankline(after_bankline_path, to_analysis)
@@ -132,6 +152,8 @@ def measure_bankline_migration(
                 "before_chainage_m": None,
                 "after_chainage_m": None,
                 "signed_displacement_m": None,
+                "displacement_lower_95_m": None,
+                "displacement_upper_95_m": None,
                 "mean_net_rate_m_per_year": None,
             })
             continue
@@ -144,6 +166,8 @@ def measure_bankline_migration(
                 "before_chainage_m": None,
                 "after_chainage_m": None,
                 "signed_displacement_m": None,
+                "displacement_lower_95_m": None,
+                "displacement_upper_95_m": None,
                 "mean_net_rate_m_per_year": None,
             })
             continue
@@ -156,12 +180,15 @@ def measure_bankline_migration(
         displacement = after_chainage - before_chainage if status == "ok" else None
         years = elapsed_days / 365.25
         rate = displacement / years if displacement is not None else None
+        displacement_half_width = 1.96 * combined_sigma if displacement is not None and combined_sigma is not None else None
         row = {
             "transect_id": transect_id,
             "status": status,
             "before_chainage_m": _safe(before_chainage),
             "after_chainage_m": _safe(after_chainage),
             "signed_displacement_m": _safe(displacement),
+            "displacement_lower_95_m": _safe(displacement - displacement_half_width) if displacement_half_width is not None else None,
+            "displacement_upper_95_m": _safe(displacement + displacement_half_width) if displacement_half_width is not None else None,
             "mean_net_rate_m_per_year": _safe(rate),
             "positive_direction_label": positive_direction_label,
         }
@@ -198,6 +225,11 @@ def measure_bankline_migration(
             "elapsed_days": elapsed_days,
             "positive_direction_label": positive_direction_label,
             "transect_orientation": "positive from each GeoJSON LineString first coordinate to last coordinate",
+            "before_bankline_sha256": file_sha256(before_bankline_path),
+            "after_bankline_sha256": file_sha256(after_bankline_path),
+            "transects_sha256": file_sha256(transects_path),
+            "before_bankline_position_sigma_m": before_bankline_sigma_m,
+            "after_bankline_position_sigma_m": after_bankline_sigma_m,
         },
         "method": {
             "measurement": "signed_chainage_difference_along_user_supplied_transects",
@@ -220,12 +252,26 @@ def measure_bankline_migration(
         },
         "quality": {
             "status": "TRANSECT_MEASURED_REQUIRES_BANKLINE_VALIDATION" if valid else "NO_VALID_TRANSECTS",
+            "release_status": "PROVISIONAL",
+            "provenance_complete": True,
             "warnings": [
                 "Positive/negative meaning follows the user-declared transect orientation label. Verify every transect starts on the documented side and ends on the opposite side.",
                 "Each transect must intersect each bankline exactly once; multiple-channel intersections are marked invalid.",
                 "Rates are mean net displacement between two observation dates, not a long-term trend or a forecast.",
                 "Banklines are user-digitized inputs and must be independently reviewed against the source satellite imagery.",
                 "The method measures movement along supplied cross-sections; it does not automatically extract the active channel belt.",
+                "Position intervals assume independent, isotropic Gaussian bankline errors and exclude stage, geolocation, transect-placement and bankline-definition uncertainty.",
+                "When source-position uncertainty was not supplied, positional uncertainty is not quantified.",
+            ],
+        },
+        "uncertainty": {
+            "status": "NOT_QUANTIFIED" if combined_sigma is None else "POSITION_ERROR_ONLY",
+            "method": "independent bankline position standard deviations combined by root-sum-square; approximate 95% normal interval",
+            "combined_displacement_sigma_m": combined_sigma,
+            "confidence_level": 0.95,
+            "assumptions": [
+                "Before and after bankline position errors are independent and isotropic Gaussian standard deviations.",
+                "Stage mismatch, geolocation, transect placement and choice of bankline definition are excluded.",
             ],
         },
         "transects": rows,
@@ -237,18 +283,21 @@ def measure_bankline_migration(
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
+    geojson_path = out / "bankline_migration_transects.geojson"
     with (out / "bankline_migration.csv").open("w", newline="", encoding="utf-8") as stream:
         fields = [
             "transect_id", "status", "before_chainage_m", "after_chainage_m",
-            "signed_displacement_m", "mean_net_rate_m_per_year", "positive_direction_label",
+            "signed_displacement_m", "displacement_lower_95_m", "displacement_upper_95_m",
+            "mean_net_rate_m_per_year", "positive_direction_label",
         ]
         writer = csv.DictWriter(stream, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
-    (out / "bankline_migration_transects.geojson").write_text(
+    geojson_path.write_text(
         json.dumps({"type": "FeatureCollection", "features": output_features}, indent=2),
         encoding="utf-8",
     )
+    summary["outputs"]["bankline_geojson_sha256"] = file_sha256(geojson_path)
     (out / "bankline_migration_summary.json").write_text(
         json.dumps(summary, indent=2, allow_nan=False),
         encoding="utf-8",

@@ -28,9 +28,9 @@ Definitions:
     deposition_candidate = WATER_before AND LAND_post_one AND LAND_post_two
 
 ## Reproduce
-    python run_morphology_analysis.py --before data/processed/before.tif --post-one data/processed/post1.tif --post-two data/processed/post2.tif --before-date 2026-06-01 --post-one-date 2026-08-01 --post-two-date 2026-09-01 --threshold-db -12 --input-units linear --maturity PROVISIONAL --frequency frequencyA --term VVVV --out-dir results/morphology
+    python run_morphology_analysis.py --before data/processed/before.tif --post-one data/processed/post1.tif --post-two data/processed/post2.tif --before-date 2026-06-01 --post-one-date 2026-08-01 --post-two-date 2026-09-01 --threshold-db -12 --input-units linear --maturity PROVISIONAL --frequency frequencyA --term HHHH --out-dir results/morphology
 
-Dates and threshold are examples only. Use actual data acquisition dates and validated thresholds.
+Dates and threshold are examples only. Use actual data acquisition dates and validated thresholds. A five-threshold table reports deterministic method sensitivity, not statistical uncertainty. The result remains PROVISIONAL until independent review evidence is supplied.
 
 ## Outputs
 - erosion_candidate_mask.tif and erosion_candidates.geojson.
