@@ -28,6 +28,7 @@ RiverShift uses NASA-ISRO NISAR Level-2 GCOV as its primary radar product. Suppo
 - [Live ASF/CMR candidate manifest (captured 2026-11-02)](data-audit/nisar_gcov_candidate_manifest_2026-11-02.json)
 - [Candidate footprint and product-level audit](data-audit/nisar_gcov_candidate_audit_2026-11-02.json)
 - [Sirajganj–Jamuna AOI and event gate](data-audit/README_SIRAJGANJ_CANDIDATE.md)
+- [Vercel project roots, environment variables and release sequence](docs/VERCEL_DEPLOYMENT.md)
 
 ### Scientific task READMEs
 Each script has its own method, inputs, outputs, validation requirements, limitations, reproducibility instructions and AI-review checklist:
