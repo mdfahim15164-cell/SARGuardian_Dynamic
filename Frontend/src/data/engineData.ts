@@ -1,6 +1,7 @@
 export type Engine = {
   name: string;
-  status: 'ACTIVE' | 'COMING SOON';
+  description?: string;
+  status: 'ACTIVE' | 'PILOT' | 'COMING SOON';
   image: string;
   icon: 'landslide' | 'glacier' | 'farming' | 'flood';
   active: boolean;
@@ -29,8 +30,9 @@ export const engines: Engine[] = [
     active: false,
   },
   {
-    name: 'Flood',
-    status: 'COMING SOON',
+    name: 'RiverShift',
+    description: 'Flood & river change monitoring',
+    status: 'PILOT',
     image: 'https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=900&q=85',
     icon: 'flood',
     active: false,

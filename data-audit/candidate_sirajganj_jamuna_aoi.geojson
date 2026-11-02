@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "name": "river_shift_sirajganj_jamuna_candidate_aoi",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "aoi_id": "sirajganj_jamuna_candidate_01",
+        "status": "CANDIDATE_NOT_APPROVED",
+        "study_area": "Jamuna River corridor, Sirajganj–Kazipur, Bangladesh",
+        "purpose": "First NISAR GCOV catalogue and footprint-feasibility audit only",
+        "approximate_area_km2": 449.342,
+        "not_a_final_bankline": true,
+        "notes": "Rectangular catalogue-screening AOI contains BWDB historical station anchors SW49 and SW49A. AOI and 2026 event dates remain unapproved pending river-corridor review and official stage observations. Replace with a reviewed corridor polygon before scientific analysis."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [89.62, 24.43],
+            [89.78, 24.43],
+            [89.78, 24.68],
+            [89.62, 24.68],
+            [89.62, 24.43]
+          ]
+        ]
+      }
+    }
+  ]
+}

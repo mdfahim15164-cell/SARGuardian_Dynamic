@@ -4,8 +4,9 @@ import type { Engine } from './data/engineData';
 import { listDisplacementJobs } from './api/catalog';
 import { Home } from './pages/Home';
 import { LandslidePage } from '../landslide/ui/LandslidePage';
+import { RiverShiftPage } from './pages/RiverShiftPage';
 import { auth, firebaseConfigured, googleProvider, missingFirebaseConfig } from './firebase';
-import { isLandslideDisplacementRoute, isLandslideKnownPlaceAnalysisRoute, isLandslideResultsRoute, isLandslideRoute, LANDSLIDE_DISPLACEMENT_PATH, LANDSLIDE_KNOWN_PLACE_PATH, LANDSLIDE_PATH, LANDSLIDE_RESULTS_PATH, navigatePath, normalizePathname } from './routing';
+import { isLandslideDisplacementRoute, isLandslideKnownPlaceAnalysisRoute, isLandslideResultsRoute, isLandslideRoute, isRiverShiftRoute, RIVER_SHIFT_PATH, LANDSLIDE_DISPLACEMENT_PATH, LANDSLIDE_KNOWN_PLACE_PATH, LANDSLIDE_PATH, LANDSLIDE_RESULTS_PATH, navigatePath, normalizePathname } from './routing';
 
 function App() {
   const [pathname, setPathname] = useState(() => normalizePathname(window.location.pathname));
@@ -122,6 +123,12 @@ function App() {
   };
 
   const handleSelectEngine = (engine: Engine) => {
+    if (engine.name === 'RiverShift') {
+      setAuthModalOpen(false);
+      navigateTo(RIVER_SHIFT_PATH);
+      return;
+    }
+
     if (!user) {
       if (engine.name === 'Landslide') {
         setPendingRoute('/landslide');
@@ -139,6 +146,10 @@ function App() {
 
     setAuthModalOpen(false);
   };
+
+  if (isRiverShiftRoute(pathname)) {
+    return <RiverShiftPage onHome={() => navigateTo('/')} />;
+  }
 
   if (isLandslideRoute(pathname)) {
     if (!user) {

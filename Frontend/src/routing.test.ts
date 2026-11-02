@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isLandslideKnownPlaceAnalysisRoute, isLandslideResultsRoute, isLandslideRoute, navigatePath, normalizePathname } from './routing';
+import { isLandslideKnownPlaceAnalysisRoute, isLandslideResultsRoute, isLandslideRoute, isRiverShiftRoute, navigatePath, normalizePathname } from './routing';
 
 describe('client-side route recognition', () => {
   it('normalizes query strings and hashes without changing the route', () => {
     expect(normalizePathname('/landslide/results?from=map#summary')).toBe('/landslide/results');
     expect(normalizePathname('')).toBe('/');
+  });
+
+  it('recognizes the public RiverShift workspace route', () => {
+    expect(isRiverShiftRoute('/river-shift')).toBe(true);
+    expect(isRiverShiftRoute('/river-shift/results?tab=map')).toBe(true);
+    expect(isRiverShiftRoute('/landslide')).toBe(false);
   });
 
   it('recognizes the separate Known Place Analysis route', () => {
