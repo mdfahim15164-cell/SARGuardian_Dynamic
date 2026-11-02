@@ -108,6 +108,26 @@ export type DisplacementJob = Partial<DisplacementProcessingOptions> & {
   updated_at: string;
 };
 
+export type RiverShiftJob = {
+  id: string;
+  state: ProcessingJobState;
+  stage: string;
+  aoi_wkt: string;
+  start_date: string;
+  end_date: string;
+  maturity: 'BETA' | 'PROVISIONAL';
+  frequency: 'frequencyA' | 'frequencyB';
+  covariance_term: string;
+  github_run_id?: string | null;
+  github_run_url?: string | null;
+  error_code?: string | null;
+  error_message?: string | null;
+  result_summary?: Record<string, unknown> | null;
+  artifact_manifest?: Array<{ name: string; path: string; bytes: number; sha256: string; drive_file_id?: string; remote_verification?: { status?: string } }> | null;
+  created_at: string;
+  updated_at: string;
+};
+
 const configuredApiUrl = (import.meta.env.VITE_SARGUARDIAN_API_URL as string | undefined)?.trim();
 const API_BASE = (configuredApiUrl || 'http://localhost:8000').replace(/\/+$/, '');
 
@@ -346,6 +366,38 @@ export async function cancelDisplacementJob(jobId: string, user: Pick<User, 'get
     'Could not cancel the displacement job.',
     { method: 'POST' },
   );
+}
+
+export async function createRiverShiftJob(input: {
+  aoiWkt: string; startDate: string; endDate: string; eventDate: string;
+  maturity: 'BETA' | 'PROVISIONAL'; frequency: 'frequencyA' | 'frequencyB';
+  covarianceTerm: string; thresholdMethod: 'otsu' | 'manual'; thresholdDb?: number;
+  idempotencyKey: string;
+}, user: Pick<User, 'getIdToken'> | null): Promise<RiverShiftJob> {
+  return readAuthenticatedPayload<RiverShiftJob>(`${API_BASE}/api/river-shift/jobs`, user, 'Could not start RiverShift processing.', {
+    method: 'POST',
+    body: JSON.stringify({
+      aoi_wkt: input.aoiWkt, start_date: input.startDate, end_date: input.endDate,
+      event_date: input.eventDate, maturity: input.maturity, frequency: input.frequency,
+      covariance_term: input.covarianceTerm, threshold_method: input.thresholdMethod,
+      threshold_db: input.thresholdMethod === 'manual' ? input.thresholdDb : null,
+      idempotency_key: input.idempotencyKey,
+    }),
+  });
+}
+
+export async function getRiverShiftJob(jobId: string, user: Pick<User, 'getIdToken'> | null): Promise<RiverShiftJob> {
+  return readAuthenticatedPayload<RiverShiftJob>(`${API_BASE}/api/river-shift/jobs/${encodeURIComponent(jobId)}`, user,
+    'Could not refresh RiverShift job status.', { cache: 'no-store' });
+}
+
+export async function downloadRiverShiftArtifact(jobId: string, artifactIndex: number, user: Pick<User, 'getIdToken'> | null): Promise<Blob> {
+  const token = await getFirebaseIdToken(user);
+  const response = await fetch(`${API_BASE}/api/river-shift/jobs/${encodeURIComponent(jobId)}/artifacts/${artifactIndex}`, {
+    headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+  });
+  if (!response.ok) await readApiPayload(response, 'Could not download the RiverShift result.');
+  return response.blob();
 }
 
 

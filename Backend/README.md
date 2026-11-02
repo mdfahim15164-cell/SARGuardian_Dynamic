@@ -38,7 +38,7 @@ That variable may contain either a modern opaque `sb_secret_...` key or a legacy
 as `Authorization: Bearer ...`; the Firebase ID token remains the separate client
 authentication credential.
 There is no in-memory fallback: missing values produce a safe configuration error. Apply
-`supabase/migrations/20261017143644_processing_jobs.sql` to the Supabase project before enabling job creation.
+`supabase/migrations/20261102200058_processing_jobs.sql` to the Supabase project before enabling job creation.
 Supabase does not automatically treat Firebase identities as Supabase Auth identities. The
 backend verifies Firebase first and filters every persistence operation by that verified UID;
 the SQL RLS policies are defense-in-depth for a future Supabase JWT integration.

@@ -1,0 +1,113 @@
+name: RiverShift NISAR GCOV processing
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: Owner-scoped RiverShift job UUID
+        required: true
+        type: string
+      aoi_wkt:
+        description: User-selected WGS84 AOI polygon
+        required: true
+        type: string
+      start_date:
+        description: First allowed acquisition date (YYYY-MM-DD)
+        required: true
+        type: string
+      end_date:
+        description: Last allowed acquisition date (YYYY-MM-DD)
+        required: true
+        type: string
+      event_date:
+        description: User-provided event date from an independent record
+        required: true
+        type: string
+      maturity:
+        description: One NISAR collection maturity; maturities are never mixed
+        required: true
+        type: choice
+        options: [PROVISIONAL, BETA]
+      frequency:
+        description: Requested NISAR frequency
+        required: true
+        type: choice
+        options: [frequencyA, frequencyB]
+      covariance_term:
+        description: Requested real-valued diagonal GCOV term
+        required: true
+        type: choice
+        options: [HHHH, HVHV, VVVV, VHVH, RHRH, RVRV]
+      threshold_method:
+        description: Common water threshold selection method
+        required: true
+        type: choice
+        options: [otsu, manual]
+      threshold_db:
+        description: Common threshold in dB; required for manual mode, empty for Otsu
+        required: false
+        type: string
+      granule_names_json:
+        description: Exact NISAR GCOV granules returned by the authenticated job request
+        required: true
+        type: string
+      request_fingerprint:
+        description: Immutable server-generated request fingerprint
+        required: true
+        type: string
+      callback_url:
+        description: HTTPS base URL for the SARGuardian job API
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: river-shift-${{ inputs.job_id }}
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      RIVERSHIFT_JOB_ID: ${{ inputs.job_id }}
+      RIVERSHIFT_AOI_WKT: ${{ inputs.aoi_wkt }}
+      RIVERSHIFT_START_DATE: ${{ inputs.start_date }}
+      RIVERSHIFT_END_DATE: ${{ inputs.end_date }}
+      RIVERSHIFT_EVENT_DATE: ${{ inputs.event_date }}
+      RIVERSHIFT_MATURITY: ${{ inputs.maturity }}
+      RIVERSHIFT_FREQUENCY: ${{ inputs.frequency }}
+      RIVERSHIFT_COVARIANCE_TERM: ${{ inputs.covariance_term }}
+      RIVERSHIFT_THRESHOLD_METHOD: ${{ inputs.threshold_method }}
+      RIVERSHIFT_THRESHOLD_DB: ${{ inputs.threshold_db }}
+      RIVERSHIFT_GRANULE_NAMES_JSON: ${{ inputs.granule_names_json }}
+      RIVERSHIFT_REQUEST_FINGERPRINT: ${{ inputs.request_fingerprint }}
+      RIVERSHIFT_CALLBACK_URL: ${{ inputs.callback_url }}
+      RIVERSHIFT_CALLBACK_SECRET: ${{ secrets.RIVERSHIFT_CALLBACK_SECRET }}
+      EARTHDATA_TOKEN: ${{ secrets.EARTHDATA_TOKEN }}
+      GOOGLE_DRIVE_OAUTH_CLIENT_JSON: ${{ secrets.GOOGLE_DRIVE_OAUTH_CLIENT_JSON }}
+      GOOGLE_DRIVE_REFRESH_TOKEN: ${{ secrets.GOOGLE_DRIVE_REFRESH_TOKEN }}
+      GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+
+    steps:
+      - name: Check out the requested processing code
+        uses: actions/checkout@v4
+
+      - name: Install GDAL and the geospatial processing environment
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          environment-file: tools/river_shift/environment.yml
+          cache-environment: true
+          generate-run-shell: true
+
+      - name: Confirm the NISAR-compatible GDAL runtime
+        shell: micromamba-shell {0}
+        run: |
+          python --version
+          gdalinfo --version
+
+      - name: Discover, download, analyze, store privately, and report status
+        shell: micromamba-shell {0}
+        run: python tools/river_shift/process_gcov_job.py

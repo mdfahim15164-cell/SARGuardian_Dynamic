@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import type { User } from 'firebase/auth';
 import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
-import type { RiverShiftGeoJSON, RiverShiftReport } from '../riverShift/manifest';
+import { createRiverShiftJob, downloadRiverShiftArtifact, getRiverShiftJob, type RiverShiftJob } from '../api/catalog';
+import type { RiverShiftGeoJSON, RiverShiftReport, RiverShiftTimeSeriesFrame } from '../riverShift/manifest';
 import { isRiverShiftGeoJSONApproved, isRiverShiftReportVerified, isRiverShiftTimeSeriesGeoJSONApproved, parseRiverShiftGeoJSON, parseRiverShiftReport } from '../riverShift/manifest';
 import { formatWktPolygon, parseWktPolygon, type Wgs84Point } from '../riverShift/aoi';
 import './river-shift.css';
 
-type Props = { onHome: () => void };
+type Props = {
+  onHome: () => void;
+  user: User | null;
+  firebaseConfigured: boolean;
+  authState: 'idle' | 'loading' | 'ready' | 'error';
+  onSignIn: () => Promise<void>;
+  onSignOut: () => Promise<void>;
+};
 
 type CatalogueProduct = {
   granule_name: string;
@@ -41,6 +50,8 @@ type CatalogueResponse = {
 };
 
 type LoadedGeoJSON = { fileName: string; sha256: string; data: RiverShiftGeoJSON };
+type LoadedJobPreview = { jobId: string; changeLayer: LoadedGeoJSON | null; report: RiverShiftReport | null; error: string };
+type LoadedJobFrame = { jobId: string; date: string; data: RiverShiftGeoJSON };
 
 const API_BASE = ((import.meta.env.VITE_SARGUARDIAN_API_URL as string | undefined) || 'http://localhost:8000')
   .trim()
@@ -180,10 +191,10 @@ function ReportPanel({ report }: { report: RiverShiftReport }) {
   );
 }
 
-export function RiverShiftPage({ onHome }: Props) {
+export function RiverShiftPage({ onHome, user, firebaseConfigured, authState, onSignIn, onSignOut }: Props) {
   const [aoiWkt, setAoiWkt] = useState('');
-  const [startDate, setStartDate] = useState('2026-06-17');
-  const [endDate, setEndDate] = useState('2026-10-31');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [maturity, setMaturity] = useState<'BETA' | 'PROVISIONAL' | 'ALL'>('PROVISIONAL');
   const [polarization, setPolarization] = useState('');
   const [direction, setDirection] = useState('');
@@ -202,6 +213,18 @@ export function RiverShiftPage({ onHome }: Props) {
   const [aoiError, setAoiError] = useState('');
   const [timeSeriesIndex, setTimeSeriesIndex] = useState(0);
   const [timeSeriesPlaying, setTimeSeriesPlaying] = useState(false);
+  const [eventDate, setEventDate] = useState('');
+  const [scienceFrequency, setScienceFrequency] = useState<'frequencyA' | 'frequencyB'>('frequencyA');
+  const [covarianceTerm, setCovarianceTerm] = useState('HHHH');
+  const [thresholdMethod, setThresholdMethod] = useState<'otsu' | 'manual'>('otsu');
+  const [thresholdDb, setThresholdDb] = useState('');
+  const [riverJob, setRiverJob] = useState<RiverShiftJob | null>(null);
+  const [riverJobBusy, setRiverJobBusy] = useState(false);
+  const [riverJobError, setRiverJobError] = useState('');
+  const [jobPreview, setJobPreview] = useState<LoadedJobPreview | null>(null);
+  const [jobFrame, setJobFrame] = useState<LoadedJobFrame | null>(null);
+  const [jobTimeSeriesIndex, setJobTimeSeriesIndex] = useState(0);
+  const [jobTimeSeriesPlaying, setJobTimeSeriesPlaying] = useState(false);
   const aoiMapElement = useRef<HTMLDivElement>(null);
   const resultMapElement = useRef<HTMLDivElement>(null);
   const aoiMapInstance = useRef<google.maps.Map | null>(null);
@@ -218,11 +241,178 @@ export function RiverShiftPage({ onHome }: Props) {
   const playbackFrames = report?.analysis_type === 'water_timeseries_screening'
     && report.time_series?.length === timeSeriesFrames.length ? timeSeriesFrames : [];
   const currentTimeSeriesFrame = playbackFrames[timeSeriesIndex];
+  const jobTimeSeriesFrames: RiverShiftTimeSeriesFrame[] = jobPreview && riverJob && jobPreview.jobId === riverJob.id
+    && jobPreview.report?.analysis_type === 'water_timeseries_screening'
+    ? jobPreview.report.time_series || [] : [];
+  const currentJobFrameMetadata = jobTimeSeriesFrames[jobTimeSeriesIndex];
+  const riverJobId = riverJob?.id;
+  const riverJobArtifactManifest = riverJob?.artifact_manifest;
+  const currentJobFrameDate = currentJobFrameMetadata?.date;
+  const currentJobFrameGeoJSON = currentJobFrameMetadata?.water_geojson;
+  const currentJobFrameSHA256 = currentJobFrameMetadata?.water_geojson_sha256;
+  const jobFrameJobId = jobFrame?.jobId;
+  const jobFrameDate = jobFrame?.date;
+  const currentJobFrame = currentJobFrameMetadata && riverJobId && jobFrame && jobFrame.jobId === riverJobId
+    && jobFrame.date === currentJobFrameMetadata.date ? jobFrame.data : null;
+  const hasJobPreviewOverlay = Boolean(jobPreview && riverJobId && jobPreview.jobId === riverJobId
+    && (jobPreview.changeLayer || currentJobFrame));
   const verifiedGeoJSONFiles = useMemo(() => {
     if (!report || report.analysis_type === 'water_timeseries_screening') return [];
     return geoJSONFiles.filter((file) => isRiverShiftGeoJSONApproved(report, file.sha256));
   }, [report, geoJSONFiles]);
   const hasVerifiedOverlay = Boolean(currentTimeSeriesFrame || verifiedGeoJSONFiles.length);
+
+  useEffect(() => {
+    if (!user || !riverJob || !['queued', 'dispatching', 'running'].includes(riverJob.state)) return undefined;
+    const timer = window.setInterval(() => {
+      void getRiverShiftJob(riverJob.id, user).then(setRiverJob).catch((error: unknown) => {
+        setRiverJobError(error instanceof Error ? error.message : 'Could not refresh processing status.');
+      });
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [riverJob, user]);
+
+  useEffect(() => {
+    if (!user || riverJob?.state !== 'succeeded' || !riverJob.artifact_manifest?.length) {
+      setJobPreview(null);
+      setJobFrame(null);
+      setJobTimeSeriesIndex(0);
+      setJobTimeSeriesPlaying(false);
+      return undefined;
+    }
+    let cancelled = false;
+    const loadPreview = async () => {
+      const artifacts = riverJob.artifact_manifest || [];
+      let changeLayer: LoadedGeoJSON | null = null;
+      let timeseriesReport: RiverShiftReport | null = null;
+      let failure = '';
+      const changeIndex = artifacts.findIndex((item) => item.name === 'river_change_candidates_preview.geojson' && item.bytes <= 4_000_000);
+      const reportIndex = artifacts.findIndex((item) => item.name === 'river_shift_timeseries_preview.json' && item.bytes <= 4_000_000);
+      if (changeIndex >= 0) {
+        try {
+          const artifact = artifacts[changeIndex];
+          const blob = await downloadRiverShiftArtifact(riverJob.id, changeIndex, user);
+          const bytes = await blob.arrayBuffer();
+          const digest = await crypto.subtle.digest('SHA-256', bytes);
+          const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+          if (sha256.toLowerCase() !== artifact.sha256.toLowerCase()) throw new Error('Map preview checksum did not match its private result receipt.');
+          changeLayer = {
+            fileName: artifact.name,
+            sha256,
+            data: parseRiverShiftGeoJSON(JSON.parse(new TextDecoder().decode(bytes)) as unknown),
+          };
+        } catch (error) {
+          failure = error instanceof Error ? error.message : 'Could not load the provisional map preview.';
+        }
+      }
+      if (reportIndex >= 0) {
+        try {
+          const artifact = artifacts[reportIndex];
+          const blob = await downloadRiverShiftArtifact(riverJob.id, reportIndex, user);
+          const bytes = await blob.arrayBuffer();
+          const digest = await crypto.subtle.digest('SHA-256', bytes);
+          const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+          if (sha256.toLowerCase() !== artifact.sha256.toLowerCase()) throw new Error('Time-series report checksum did not match its private result receipt.');
+          timeseriesReport = parseRiverShiftReport(JSON.parse(new TextDecoder().decode(bytes)) as unknown);
+        } catch (error) {
+          failure = failure || (error instanceof Error ? error.message : 'Could not load the observed-date time series.');
+        }
+      }
+      if (!cancelled) {
+        setJobPreview({ jobId: riverJob.id, changeLayer, report: timeseriesReport, error: failure });
+        setJobTimeSeriesIndex(0);
+      }
+    };
+    void loadPreview();
+    return () => { cancelled = true; };
+  }, [riverJob?.id, riverJob?.state, riverJob?.artifact_manifest, user]);
+
+  useEffect(() => {
+    if (!user || !riverJobId || !currentJobFrameDate || !currentJobFrameGeoJSON || !currentJobFrameSHA256
+      || (jobFrameJobId === riverJobId && jobFrameDate === currentJobFrameDate)) return undefined;
+    const artifacts = riverJobArtifactManifest || [];
+    const artifactIndex = artifacts.findIndex((item) => item.name === currentJobFrameGeoJSON && item.bytes <= 4_000_000);
+    if (artifactIndex < 0) return undefined;
+    let cancelled = false;
+    const loadFrame = async () => {
+      try {
+        const artifact = artifacts[artifactIndex];
+        const blob = await downloadRiverShiftArtifact(riverJobId, artifactIndex, user);
+        const bytes = await blob.arrayBuffer();
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+        if (sha256.toLowerCase() !== artifact.sha256.toLowerCase()
+          || sha256.toLowerCase() !== currentJobFrameSHA256.toLowerCase()) {
+          throw new Error('Observed-date preview checksum did not match the report and private result receipt.');
+        }
+        const data = parseRiverShiftGeoJSON(JSON.parse(new TextDecoder().decode(bytes)) as unknown);
+        if (!cancelled) setJobFrame({ jobId: riverJobId, date: currentJobFrameDate, data });
+      } catch (error) {
+        if (!cancelled) setJobPreview((current) => current?.jobId === riverJobId
+          ? { ...current, error: error instanceof Error ? error.message : 'Could not load this observed-date preview.' }
+          : current);
+      }
+    };
+    void loadFrame();
+    return () => { cancelled = true; };
+  }, [riverJobId, riverJobArtifactManifest, user, currentJobFrameDate, currentJobFrameGeoJSON, currentJobFrameSHA256, jobFrameJobId, jobFrameDate]);
+
+  const startLiveProcessing = async () => {
+    setRiverJobError('');
+    if (!user) {
+      setRiverJobError('Sign in with Google before starting live processing.');
+      return;
+    }
+    if (!eventDate) {
+      setRiverJobError('Add the event date from your independent event record before processing.');
+      return;
+    }
+    if (maturity === 'ALL') {
+      setRiverJobError('Choose one maturity. BETA and PROVISIONAL products cannot be mixed in a scientific time series.');
+      return;
+    }
+    if (thresholdMethod === 'manual') {
+      const manualThreshold = Number(thresholdDb);
+      if (!thresholdDb.trim() || !Number.isFinite(manualThreshold) || manualThreshold < -60 || manualThreshold > 0) {
+        setRiverJobError('Enter one manual threshold between -60 and 0 dB, or choose Otsu.');
+        return;
+      }
+    }
+    setRiverJobBusy(true);
+    setJobPreview(null);
+    setJobFrame(null);
+    setJobTimeSeriesIndex(0);
+    setJobTimeSeriesPlaying(false);
+    try {
+      const job = await createRiverShiftJob({
+        aoiWkt, startDate, endDate, eventDate, maturity,
+        frequency: scienceFrequency, covarianceTerm, thresholdMethod,
+        ...(thresholdMethod === 'manual' ? { thresholdDb: Number(thresholdDb) } : {}),
+        idempotencyKey: crypto.randomUUID().replace(/-/g, ''),
+      }, user);
+      setRiverJob(job);
+    } catch (error) {
+      setRiverJobError(error instanceof Error ? error.message : 'Could not start live RiverShift processing.');
+    } finally {
+      setRiverJobBusy(false);
+    }
+  };
+
+  const saveRiverArtifact = async (artifactIndex: number, fileName: string) => {
+    if (!riverJob || !user) return;
+    setRiverJobError('');
+    try {
+      const blob = await downloadRiverShiftArtifact(riverJob.id, artifactIndex, user);
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      setRiverJobError(error instanceof Error ? error.message : 'Could not download this private result.');
+    }
+  };
 
   const searchCatalogue = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -393,7 +583,11 @@ export function RiverShiftPage({ onHome }: Props) {
     map.data.forEach((feature) => map.data.remove(feature));
     const displayLayers = currentTimeSeriesFrame
       ? [currentTimeSeriesFrame.data]
-      : verifiedGeoJSONFiles.map((file) => file.data);
+      : verifiedGeoJSONFiles.length
+        ? verifiedGeoJSONFiles.map((file) => file.data)
+        : jobPreview && riverJobId && jobPreview.jobId === riverJobId
+          ? [jobPreview.changeLayer?.data, currentJobFrame].filter((layer): layer is RiverShiftGeoJSON => Boolean(layer))
+          : [];
     displayLayers.forEach((layer) => map.data.addGeoJson(layer as unknown as object));
     map.data.setStyle((feature) => {
       const name = String(feature.getProperty('class') || feature.getProperty('change_type') || '').toLowerCase();
@@ -408,7 +602,7 @@ export function RiverShiftPage({ onHome }: Props) {
       if (geometry) geometry.forEachLatLng((point) => bounds.extend(point));
     });
     if (!bounds.isEmpty()) map.fitBounds(bounds);
-  }, [mapReady, currentTimeSeriesFrame, verifiedGeoJSONFiles]);
+  }, [mapReady, currentTimeSeriesFrame, verifiedGeoJSONFiles, jobPreview, currentJobFrame, riverJobId]);
 
   useEffect(() => {
     if (!timeSeriesPlaying || playbackFrames.length < 2) return;
@@ -417,6 +611,14 @@ export function RiverShiftPage({ onHome }: Props) {
     }, 1100);
     return () => window.clearInterval(timer);
   }, [timeSeriesPlaying, playbackFrames.length]);
+
+  useEffect(() => {
+    if (!jobTimeSeriesPlaying || jobTimeSeriesFrames.length < 2) return;
+    const timer = window.setInterval(() => {
+      setJobTimeSeriesIndex((index) => (index + 1) % jobTimeSeriesFrames.length);
+    }, 1100);
+    return () => window.clearInterval(timer);
+  }, [jobTimeSeriesPlaying, jobTimeSeriesFrames.length]);
 
   const resultType = useMemo(() => report ? report.analysis_type.replace(/_/g, ' ') : 'No result imported', [report]);
 
@@ -428,7 +630,12 @@ export function RiverShiftPage({ onHome }: Props) {
           <span className="rs-brand-mark">RS</span>
           <div><strong>RiverShift</strong><small>FLOOD & RIVER CHANGE INTELLIGENCE</small></div>
         </div>
-        <span className="rs-challenge-tag">NASA SPACE APPS 2026 · DANCING WITH THE SARS</span>
+        <div className="rs-header-actions">
+          <span className="rs-challenge-tag">NASA SPACE APPS 2026 · DANCING WITH THE SARS</span>
+          {user
+            ? <button className="rs-secondary-button" type="button" onClick={() => void onSignOut()}>{user.displayName || 'Account'} · Sign out</button>
+            : <button className="rs-secondary-button" type="button" disabled={!firebaseConfigured || authState === 'loading'} onClick={() => void onSignIn()}>{firebaseConfigured ? 'Sign in to process' : 'Sign-in setup required'}</button>}
+        </div>
       </header>
 
       <section className="rs-hero">
@@ -491,6 +698,7 @@ export function RiverShiftPage({ onHome }: Props) {
             <div className="rs-fields-two">
               <label className="rs-field"><span>Start date</span><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required /></label>
               <label className="rs-field"><span>End date</span><input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} required /></label>
+              <label className="rs-field"><span>Event date · from independent record</span><input type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} min={startDate} max={endDate} /></label>
               <label className="rs-field"><span>Processing maturity</span>
                 <select value={maturity} onChange={(event) => setMaturity(event.target.value as typeof maturity)}>
                   <option value="PROVISIONAL">PROVISIONAL</option><option value="BETA">BETA</option><option value="ALL">ALL (audit only)</option>
@@ -516,10 +724,31 @@ export function RiverShiftPage({ onHome }: Props) {
                 </select>
                 <small>FULL/PARTIAL refers to NISAR frame coverage, not the percentage of your AOI covered. That must be checked separately.</small>
               </label>
+              <label className="rs-field"><span>Science frequency</span>
+                <select value={scienceFrequency} onChange={(event) => setScienceFrequency(event.target.value as typeof scienceFrequency)}>
+                  <option value="frequencyA">Frequency A</option><option value="frequencyB">Frequency B</option>
+                </select>
+              </label>
+              <label className="rs-field"><span>Diagonal covariance term</span>
+                <select value={covarianceTerm} onChange={(event) => setCovarianceTerm(event.target.value)}>
+                  <option>HHHH</option><option>HVHV</option><option>VVVV</option><option>VHVH</option><option>RHRH</option><option>RVRV</option>
+                </select>
+              </label>
+              <label className="rs-field"><span>Common water threshold method</span>
+                <select value={thresholdMethod} onChange={(event) => setThresholdMethod(event.target.value as typeof thresholdMethod)}>
+                  <option value="otsu">Common Otsu · exploratory</option><option value="manual">Manual dB threshold</option>
+                </select>
+              </label>
+              {thresholdMethod === 'manual' && <label className="rs-field"><span>Common threshold (dB)</span><input type="number" min="-60" max="0" step="0.1" required value={thresholdDb} onChange={(event) => setThresholdDb(event.target.value)} /></label>}
             </div>
             <button className="rs-primary-button" type="submit" disabled={catalogueBusy}>
               {catalogueBusy ? 'Searching ASF…' : 'Search GCOV archive'}
             </button>
+            <button className="rs-secondary-button" type="button" disabled={riverJobBusy || catalogue?.status !== 'ready' || !aoiWkt || !eventDate || !user || maturity === 'ALL'} onClick={() => void startLiveProcessing()}>
+              {riverJobBusy ? 'Submitting job…' : 'Download NISAR data & process'}
+            </button>
+            {!user && <p className="rs-muted">Live processing requires account sign-in so job status and private results stay owner-protected.</p>}
+            {eventDate && <p className="rs-warning-inline">The event date is user supplied. Until official gauge/event evidence is attached, results remain provisional.</p>}
             {catalogueError && <p className="rs-error" role="alert">{catalogueError}</p>}
           </form>
           {catalogue && (
@@ -570,6 +799,37 @@ export function RiverShiftPage({ onHome }: Props) {
         </aside>
       </section>
 
+      {riverJob && <section className="rs-panel rs-job-panel" aria-live="polite">
+        <div className="rs-section-heading"><div><p className="rs-kicker">LIVE SCIENCE JOB</p><h2>{riverJob.state.replace(/_/g, ' ')} · {riverJob.stage.replace(/_/g, ' ')}</h2></div>
+          <span className="rs-chip">{riverJob.maturity} · {riverJob.frequency} / {riverJob.covariance_term}</span></div>
+        <p className="rs-muted">Job ID {riverJob.id} · {riverJob.start_date} to {riverJob.end_date}</p>
+        {riverJob.github_run_url && <p><a href={riverJob.github_run_url} target="_blank" rel="noreferrer">Open processing run logs ↗</a></p>}
+        {riverJob.error_message && <p className="rs-error" role="alert">{riverJob.error_message}</p>}
+        {riverJob.state === 'succeeded' && <div className="rs-warning-inline"><strong>Processing complete · PROVISIONAL.</strong> Independent validation and authoritative event confirmation are pending. The map below can show a checksum-checked display preview; its measurements are not verified.</div>}
+        {jobPreview?.jobId === riverJob.id && jobPreview.report && jobTimeSeriesFrames.length > 0 && (
+          <section className="rs-timeseries" aria-label="Provisional observed acquisition playback">
+            <div className="rs-section-heading"><div><p className="rs-kicker">OBSERVED ACQUISITIONS</p><h3>River change playback</h3></div>
+              <span className="rs-chip">PROVISIONAL · NO DAILY INTERPOLATION</span></div>
+            <p className="rs-warning-inline">Each step is an actual NISAR acquisition date. The blue layer shows open-water candidates; the red and green layers show persistent erosion and deposition candidates. These are radar screening results, not field-confirmed change.</p>
+            <div className="rs-playback-controls">
+              <button className="rs-secondary-button" type="button" onClick={() => setJobTimeSeriesIndex((index) => (index - 1 + jobTimeSeriesFrames.length) % jobTimeSeriesFrames.length)}>Previous</button>
+              <button className="rs-primary-button" type="button" disabled={jobTimeSeriesFrames.length < 2} onClick={() => setJobTimeSeriesPlaying((value) => !value)}>{jobTimeSeriesPlaying ? 'Pause' : 'Play'}</button>
+              <button className="rs-secondary-button" type="button" onClick={() => setJobTimeSeriesIndex((index) => (index + 1) % jobTimeSeriesFrames.length)}>Next</button>
+              <label className="rs-date-slider"><span>Observed date</span>
+                <input type="range" min={0} max={jobTimeSeriesFrames.length - 1} value={jobTimeSeriesIndex}
+                  onChange={(event) => { setJobTimeSeriesPlaying(false); setJobTimeSeriesIndex(Number(event.target.value)); }} />
+              </label>
+            </div>
+            {currentJobFrameMetadata && <p className="rs-info-banner">Observed {currentJobFrameMetadata.date} · open-water candidate area {currentJobFrameMetadata.water_area_km2.toFixed(3)} km² · valid samples {(currentJobFrameMetadata.valid_pixel_fraction * 100).toFixed(1)}%{!currentJobFrame ? ' · loading map layer…' : ''}</p>}
+          </section>
+        )}
+        {jobPreview?.jobId === riverJob.id && jobPreview.error && <p className="rs-warning-inline" role="status">{jobPreview.error}</p>}
+        {!!riverJob.artifact_manifest?.length && <div className="rs-artifact-list"><strong>Private result files · checksum verified</strong>{riverJob.artifact_manifest.map((artifact, index) => artifact.bytes <= 4_000_000
+          ? <button className="rs-secondary-button" key={`${artifact.path}-${index}`} type="button" onClick={() => void saveRiverArtifact(index, artifact.name)}>{artifact.name} · {(artifact.bytes / 1_000_000).toFixed(2)} MB</button>
+          : <span className="rs-muted" key={`${artifact.path}-${index}`}>{artifact.name} · {(artifact.bytes / 1_000_000).toFixed(2)} MB · stored privately; too large for in-app download</span>)}</div>}
+        {riverJobError && <p className="rs-error" role="alert">{riverJobError}</p>}
+      </section>}
+
       <section className="rs-panel rs-results-panel">
         <div className="rs-section-heading">
           <div><p className="rs-kicker">03 · RESULTS EXPLORER</p><h2>Inspect reproducible outputs</h2></div>
@@ -617,9 +877,10 @@ export function RiverShiftPage({ onHome }: Props) {
         <section className="rs-map-section">
           <div className="rs-section-heading"><div><p className="rs-kicker">GEOSPATIAL OUTPUT</p><h3>Change map</h3></div></div>
           {mapError && <p className="rs-warning-inline">{mapError}</p>}
-          <div className="rs-map" ref={resultMapElement} role="img" aria-label="Satellite basemap; verified RiverShift change polygons only" />
+          <div className="rs-map" ref={resultMapElement} role="img" aria-label="Google satellite basemap with checksum-checked RiverShift result overlays" />
           <div className="rs-legend"><span><i className="rs-swatch rs-erosion" />Erosion candidate</span><span><i className="rs-swatch rs-deposition" />Deposition candidate</span><span><i className="rs-swatch rs-water" />New water / observed water candidate</span></div>
           {hasVerifiedOverlay && <p className="rs-muted">Verified layer(s) are drawn; each GeoJSON SHA-256 matches the loaded report. Candidate classes require scientific interpretation and are not field-confirmed land change.</p>}
+          {hasJobPreviewOverlay && !hasVerifiedOverlay && <p className="rs-warning-inline">Provisional job preview is drawn. The full-resolution science reports remain PROVISIONAL; map geometries are simplified for display and small patches may be omitted.</p>}
           {report && geoJSONFiles.length > 0 && !hasVerifiedOverlay && <p className="rs-warning-inline" role="status">Loaded GeoJSON is not drawn: the report is not VERIFIED, the checksum does not match, or the complete time-series layer set is missing.</p>}
         </section>
         {!report && <div className="rs-empty-state"><strong>{resultType}</strong><p>No scientific result is loaded. Run a script and import its JSON report; no demo measurement is shown here.</p></div>}
