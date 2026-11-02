@@ -245,9 +245,16 @@ export function RiverShiftPage({ onHome, user, firebaseConfigured, authState, on
     && jobPreview.report?.analysis_type === 'water_timeseries_screening'
     ? jobPreview.report.time_series || [] : [];
   const currentJobFrameMetadata = jobTimeSeriesFrames[jobTimeSeriesIndex];
-  const currentJobFrame = currentJobFrameMetadata && riverJob && jobFrame && jobFrame.jobId === riverJob.id
+  const riverJobId = riverJob?.id;
+  const riverJobArtifactManifest = riverJob?.artifact_manifest;
+  const currentJobFrameDate = currentJobFrameMetadata?.date;
+  const currentJobFrameGeoJSON = currentJobFrameMetadata?.water_geojson;
+  const currentJobFrameSHA256 = currentJobFrameMetadata?.water_geojson_sha256;
+  const jobFrameJobId = jobFrame?.jobId;
+  const jobFrameDate = jobFrame?.date;
+  const currentJobFrame = currentJobFrameMetadata && riverJobId && jobFrame && jobFrame.jobId === riverJobId
     && jobFrame.date === currentJobFrameMetadata.date ? jobFrame.data : null;
-  const hasJobPreviewOverlay = Boolean(jobPreview && riverJob && jobPreview.jobId === riverJob.id
+  const hasJobPreviewOverlay = Boolean(jobPreview && riverJobId && jobPreview.jobId === riverJobId
     && (jobPreview.changeLayer || currentJobFrame));
   const verifiedGeoJSONFiles = useMemo(() => {
     if (!report || report.analysis_type === 'water_timeseries_screening') return [];
@@ -321,33 +328,34 @@ export function RiverShiftPage({ onHome, user, firebaseConfigured, authState, on
   }, [riverJob?.id, riverJob?.state, riverJob?.artifact_manifest, user]);
 
   useEffect(() => {
-    if (!user || !riverJob || !currentJobFrameMetadata || jobFrame?.jobId === riverJob.id && jobFrame.date === currentJobFrameMetadata.date) return undefined;
-    const artifacts = riverJob.artifact_manifest || [];
-    const artifactIndex = artifacts.findIndex((item) => item.name === currentJobFrameMetadata.water_geojson && item.bytes <= 4_000_000);
+    if (!user || !riverJobId || !currentJobFrameDate || !currentJobFrameGeoJSON || !currentJobFrameSHA256
+      || (jobFrameJobId === riverJobId && jobFrameDate === currentJobFrameDate)) return undefined;
+    const artifacts = riverJobArtifactManifest || [];
+    const artifactIndex = artifacts.findIndex((item) => item.name === currentJobFrameGeoJSON && item.bytes <= 4_000_000);
     if (artifactIndex < 0) return undefined;
     let cancelled = false;
     const loadFrame = async () => {
       try {
         const artifact = artifacts[artifactIndex];
-        const blob = await downloadRiverShiftArtifact(riverJob.id, artifactIndex, user);
+        const blob = await downloadRiverShiftArtifact(riverJobId, artifactIndex, user);
         const bytes = await blob.arrayBuffer();
         const digest = await crypto.subtle.digest('SHA-256', bytes);
         const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
         if (sha256.toLowerCase() !== artifact.sha256.toLowerCase()
-          || sha256.toLowerCase() !== currentJobFrameMetadata.water_geojson_sha256.toLowerCase()) {
+          || sha256.toLowerCase() !== currentJobFrameSHA256.toLowerCase()) {
           throw new Error('Observed-date preview checksum did not match the report and private result receipt.');
         }
         const data = parseRiverShiftGeoJSON(JSON.parse(new TextDecoder().decode(bytes)) as unknown);
-        if (!cancelled) setJobFrame({ jobId: riverJob.id, date: currentJobFrameMetadata.date, data });
+        if (!cancelled) setJobFrame({ jobId: riverJobId, date: currentJobFrameDate, data });
       } catch (error) {
-        if (!cancelled) setJobPreview((current) => current?.jobId === riverJob.id
+        if (!cancelled) setJobPreview((current) => current?.jobId === riverJobId
           ? { ...current, error: error instanceof Error ? error.message : 'Could not load this observed-date preview.' }
           : current);
       }
     };
     void loadFrame();
     return () => { cancelled = true; };
-  }, [riverJob?.id, riverJob?.artifact_manifest, user, currentJobFrameMetadata?.date, jobFrame?.date]);
+  }, [riverJobId, riverJobArtifactManifest, user, currentJobFrameDate, currentJobFrameGeoJSON, currentJobFrameSHA256, jobFrameJobId, jobFrameDate]);
 
   const startLiveProcessing = async () => {
     setRiverJobError('');
@@ -577,7 +585,7 @@ export function RiverShiftPage({ onHome, user, firebaseConfigured, authState, on
       ? [currentTimeSeriesFrame.data]
       : verifiedGeoJSONFiles.length
         ? verifiedGeoJSONFiles.map((file) => file.data)
-        : jobPreview && riverJob && jobPreview.jobId === riverJob.id
+        : jobPreview && riverJobId && jobPreview.jobId === riverJobId
           ? [jobPreview.changeLayer?.data, currentJobFrame].filter((layer): layer is RiverShiftGeoJSON => Boolean(layer))
           : [];
     displayLayers.forEach((layer) => map.data.addGeoJson(layer as unknown as object));
@@ -594,7 +602,7 @@ export function RiverShiftPage({ onHome, user, firebaseConfigured, authState, on
       if (geometry) geometry.forEachLatLng((point) => bounds.extend(point));
     });
     if (!bounds.isEmpty()) map.fitBounds(bounds);
-  }, [mapReady, currentTimeSeriesFrame, verifiedGeoJSONFiles, jobPreview, currentJobFrame, riverJob?.id]);
+  }, [mapReady, currentTimeSeriesFrame, verifiedGeoJSONFiles, jobPreview, currentJobFrame, riverJobId]);
 
   useEffect(() => {
     if (!timeSeriesPlaying || playbackFrames.length < 2) return;
