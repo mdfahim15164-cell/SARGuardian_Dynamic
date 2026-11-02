@@ -39,9 +39,9 @@ Important: FULL/PARTIAL is a product-frame metadata field. It does not say how m
 Run from tools/river_shift:
 
     python -m pip install -r requirements.txt
-    python discover_gcov_products.py --aoi-wkt "POLYGON ((89.62 24.43, 89.78 24.43, 89.78 24.68, 89.62 24.68, 89.62 24.43))" --start-date 2026-06-17 --end-date 2026-10-31 --maturity PROVISIONAL --frame-coverage ALL --out data-audit/gcov-catalogue-manifest.json
+    python discover_gcov_products.py --aoi-wkt "YOUR_DRAWN_WGS84_POLYGON_WKT" --start-date YYYY-MM-DD --end-date YYYY-MM-DD --maturity PROVISIONAL --frame-coverage ALL --out data-audit/gcov-catalogue-manifest.json
 
-The coordinates above are the repository's explicitly unapproved Sirajganj–Kazipur candidate AOI. It is for catalogue feasibility only. Obtain science-team approval and replace it before making any study claim.
+Use the polygon drawn or entered for the study and the date interval selected for that run. No Bangladesh AOI is built into the processing request. NISAR coverage and comparable acquisition availability still vary by location and time.
 
 ## Outputs
 - JSON manifest containing the query and each matching GCOV granule.

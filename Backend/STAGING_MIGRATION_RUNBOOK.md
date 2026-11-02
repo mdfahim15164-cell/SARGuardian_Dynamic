@@ -78,7 +78,7 @@ From a local checkout, inspect the proposed migration without connecting anywher
 
 ```powershell
 cd D:\SARGuardian_Dynamic\Backend
-Get-Content .\supabase\migrations\20261017143644_processing_jobs.sql
+Get-Content .\supabase\migrations\20261102200058_processing_jobs.sql
 ```
 
 Confirm the review covers the transaction, schema-drift checks, Firebase-UID owner
@@ -104,7 +104,7 @@ select to_regtype('public.processing_job_state') as processing_job_state,
 ```
 
 3. After project identity and the read-only result are approved, paste the complete
-   contents of `supabase/migrations/20261017143644_processing_jobs.sql` and run it once.
+   contents of `supabase/migrations/20261102200058_processing_jobs.sql` and run it once.
 4. The migration runs in a transaction. If it reports schema drift or another
    error, stop and preserve the error for review; do not run destructive cleanup or
    attempt a blind retry.

@@ -30,31 +30,16 @@ Evidence:
 - [x] Parse official single-acquisition GCOV granule names and preserve CRID, frame coverage, orbit, polarization and acquisition time.
 - [x] Use the documented ASF JSON response format and do not infer unknown maturity.
 - [x] Add multi-date comparability and per-date AOI footprint coverage audit.
-- [x] Add a push/manual GitHub Actions workflow for CMR NISAR GCOV collection/footprint discovery without downloading data.
-- [x] Add a candidate Sirajganj–Kazipur search polygon, clearly marked NOT APPROVED.
-- [ ] Select and independently review the final Jamuna/Sirajganj study AOI and replace the candidate polygon.
-- [ ] Confirm the automatic or manually dispatched GitHub Actions GCOV audit completes with the team-approved AOI; download its catalogue/feasibility artifacts.
-- [ ] Review and save the actual NASA CMR UMM-G manifest for the selected AOI.
-- [ ] Confirm at least three comparable acquisitions exist for one event.
-- [ ] Confirm same maturity, frequency, diagonal term, orbit direction, relative track, bandwidth mode, processing type and compatible incidence geometry.
-- [ ] Confirm each selected acquisition date meets the approved AOI footprint-coverage threshold and covers the full analysis AOI.
-- [ ] Record product IDs, URLs, dates, version/CRID, sizes, maturity and SHA-256 receipts.
-- [ ] Download and archive selected GCOV files outside Git.
+- [x] Add a manual CMR catalogue/footprint audit that requires the user's AOI and date range; it has no built-in Bangladesh geometry.
+- [x] Add a separate GCOV processing worker for the signed user-selected AOI/date request.
+- [x] Require four comparable observed dates, at least 90% catalogue footprint coverage per date, exact HDF5 term checks, valid-sample masks and one common analysis grid.
+- [x] Keep the existing Sirajganj–Kazipur geometry as an optional, explicitly unapproved research file; it is not used as a default or runtime fallback.
+- [ ] Push the worker and dispatch workflow to the configured GitHub ref.
+- [ ] Configure Earthdata, private Drive and callback secrets, then complete a real NISAR job in the user-selected study area.
+- [ ] Review the actual NASA CMR manifest, exact product checksums, valid raster coverage and science results from that run.
+- [ ] Confirm the selected event date against an authoritative gauge or independent event record.
 
-Evidence expected:
-- data-audit/candidate_sirajganj_jamuna_aoi.geojson (candidate only)
-- data-audit/README_SIRAJGANJ_CANDIDATE.md
-- .github/workflows/river-shift-gcov-audit.yml
-- tools/river_shift/audit_gcov_acquisitions.py
-- data-audit/README_SIRAJGANJ_CANDIDATE.md
-- tools/river_shift/audit_gcov_acquisitions.py
-- .github/workflows/river-shift-gcov-audit.yml
-- downloaded workflow artefacts after a real catalogue run
-- data-audit/study_area.geojson
-- data-audit/gcov_catalogue.json
-- data-audit/acquisition_timeline.csv
-- data-audit/feasibility_report.md
-- per-product download receipts
+Evidence expected: `.github/workflows/river-shift-gcov-audit.yml`, `.github/workflows/river-shift-gcov-process.yml`, `tools/river_shift/process_gcov_job.py`, and private per-product download receipts from a real run.
 
 ## C. Flood inundation analysis
 
@@ -117,29 +102,27 @@ Evidence expected:
 - [x] Add satellite map layer for imported GeoJSON when Google Maps is configured.
 - [x] Draw a WGS84 AOI on the satellite map and pass the validated polygon to catalogue search.
 - [x] Add observed-acquisition water time-series exports and a discrete-date play/pause/step viewer with exact file/checksum matching.
+- [x] Add a checksum-checked provisional map preview and observed-date playback for completed processing jobs.
 - [x] Add an erosion/deposition/new-water legend.
 - [x] Add AOI, manifest, and time-series report gate tests.
-- [ ] Configure the public Vercel map key and API URL.
-- [ ] Configure Render CORS to allow the deployed frontend origin.
+- [x] Configure the production Google Maps key, HTTPS API URL and backend CORS origin.
+- [ ] Deploy the latest workspace changes and verify live Google Maps rendering and job-preview playback.
 - [ ] Import real NISAR-derived results and verify each layer's geographic alignment.
 - [ ] Verify keyboard/touch responsiveness and judge-friendly empty/error states.
 - [ ] Add a one-click sample workflow only after a real, openly shareable case study exists.
 
 ## G. Cloud processing and persistence
 
-- [x] Reuse the existing FastAPI/worker/Drive architecture as the documented target design.
+- [x] Add the owner-scoped RiverShift job request, status, callback and private artifact retrieval flow.
 - [x] Keep Earthdata and server keys out of VITE_ variables.
-- [ ] Design the RiverShift job request/result contract after the active Supabase project is connected and its current schema is reviewed.
-
-Supabase blocker: the connected-project list was empty during this implementation session. Do not create a handwritten SQL migration or apply schema changes until the team connects the intended Supabase project and confirms the target environment.
-- [ ] Add a dedicated Supabase migration for RiverShift jobs and result manifests.
-- [ ] Apply the migration to the correct active Supabase project after verifying project identity and backup.
-- [ ] Add owner-scoped backend endpoints and state transitions.
-- [ ] Add a separate GCOV GitHub Actions worker; do not call the Landslide GUNW/GOFF workflow for GCOV.
-- [ ] Add signed callbacks, idempotency and resource limits.
-- [ ] Upload and verify private result bundles.
-- [ ] Add result retrieval and expiration/retention rules.
-- [ ] Test staging end-to-end before production deployment.
+- [x] Review the connected healthy Supabase project and verify its `river_shift_jobs` table is RLS-enabled.
+- [x] Add the RiverShift migration; migration `20261102200956` is already present in the connected project.
+- [x] Add a separate NISAR GCOV GitHub Actions worker; it does not use the Landslide GUNW/GOFF workflow.
+- [x] Add signed callbacks, idempotency, acquisition/resource limits and private Drive checksum verification.
+- [x] Add owner-authorized private artifact retrieval; large files remain private when they exceed the web-download limit.
+- [ ] Push and deploy the updated worker/API/frontend code.
+- [ ] Configure `RIVERSHIFT_*` production variables on Vercel and the required GitHub Actions secrets.
+- [ ] Complete a successful real-data job and verify the private artifacts, callback state and map preview end to end.
 
 ## H. NASA Space Apps scoring evidence
 
@@ -158,7 +141,7 @@ Supabase blocker: the connected-project list was empty during this implementatio
 
 Do not mark RiverShift as final-judge-ready until:
 1. Real GCOV coverage is confirmed for the final AOI.
-2. At least three comparable acquisitions are processed.
+2. At least four comparable acquisitions are processed for the end-to-end flood and persistent-change screening.
 3. Flood and morphology outputs are generated from real data.
 4. At least one independent validation report exists.
 5. The deployed UI presents the real case study with provenance, legend and limitations.

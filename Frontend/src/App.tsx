@@ -148,7 +148,8 @@ function App() {
   };
 
   if (isRiverShiftRoute(pathname)) {
-    return <RiverShiftPage onHome={() => navigateTo('/')} />;
+    return <RiverShiftPage onHome={() => navigateTo('/')} user={user} firebaseConfigured={firebaseConfigured}
+      authState={authState} onSignIn={handleSignIn} onSignOut={handleSignOut} />;
   }
 
   if (isLandslideRoute(pathname)) {

@@ -7,19 +7,24 @@ on:
     paths:
       - "Backend/**"
       - "docs/DISPLACEMENT_ACTIONS.md"
+      - "docs/RIVERSHIFT_PROCESSING_SETUP.md"
       - ".github/workflows/backend-tests.yml"
       - ".github/workflows/sarguardian-aoi-wkt-dashboard.yml"
+      - ".github/workflows/river-shift-gcov-process.yml"
   push:
     branches:
       - main
       - fix/supabase-github-migrations
       - fix/manual-aoi-target-fallback-20261027
       - fix/google-dashboard-in-frontend-20261028
+      - feature/river-shift-engine-label
     paths:
       - "Backend/**"
       - "docs/DISPLACEMENT_ACTIONS.md"
+      - "docs/RIVERSHIFT_PROCESSING_SETUP.md"
       - ".github/workflows/backend-tests.yml"
       - ".github/workflows/sarguardian-aoi-wkt-dashboard.yml"
+      - ".github/workflows/river-shift-gcov-process.yml"
 
 permissions:
   contents: read
@@ -50,11 +55,12 @@ jobs:
         run: |
           set -euo pipefail
           test -f Backend/supabase/config.toml
-          test -f Backend/supabase/migrations/20261017143644_processing_jobs.sql
-          test -f Backend/supabase/migrations/20261022203034_displacement_jobs.sql
-          test -f Backend/supabase/migrations/20261023141449_displacement_active_request_guard.sql
-          test -f Backend/supabase/migrations/20261024111404_scientific_request_contract.sql
-          test -f Backend/supabase/migrations/20261027003643_place_target_contract.sql
+          test -f Backend/supabase/migrations/20261102200058_processing_jobs.sql
+          test -f Backend/supabase/migrations/20261102200120_displacement_jobs.sql
+          test -f Backend/supabase/migrations/20261102200128_displacement_active_request_guard.sql
+          test -f Backend/supabase/migrations/20261102200239_scientific_request_contract.sql
+          test -f Backend/supabase/migrations/20261102200252_place_target_contract.sql
+          test -f Backend/supabase/migrations/20261102200956_river_shift_jobs.sql
           test ! -e Backend/migrations/001_processing_jobs.sql
           test ! -e Backend/migrations/002_displacement_jobs.sql
           test ! -e Backend/migrations/003_displacement_active_request_guard.sql
@@ -73,6 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           ruby -e 'require "yaml"; YAML.load_file(".github/workflows/sarguardian-aoi-wkt-dashboard.yml"); puts "SCIENCE_DASHBOARD_WORKFLOW_YAML_PASS"'
+          ruby -e 'require "yaml"; YAML.load_file(".github/workflows/river-shift-gcov-process.yml"); puts "RIVERSHIFT_PROCESSING_WORKFLOW_YAML_PASS"'
           count="$(grep -F -o "$EXPECTED_DASHBOARD_BUILDER_SHA" .github/workflows/sarguardian-aoi-wkt-dashboard.yml | wc -l | tr -d ' ')"
           test "$count" = "4" || { echo "ERROR=EXPECTED_FOUR_VERIFIED_DASHBOARD_PIN_REFERENCES actual=$count"; exit 1; }
           echo "PINNED_BUILDER_REVISION_CONTRACT=PASS"

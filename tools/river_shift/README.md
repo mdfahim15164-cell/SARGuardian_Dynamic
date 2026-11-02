@@ -15,7 +15,11 @@ This folder provides a first local scientific workflow:
 9. Audit whether at least three compatible GCOV dates cover the AOI sufficiently.
 10. Export an observed-date water time series for discrete, evidence-preserving dashboard playback.
 
-This is not yet a cloud-dispatched, end-to-end job pipeline. Backend catalogue discovery is available separately. Large HDF5 processing should only be enabled in a worker after an AOI/product feasibility run and resource review.
+The separate GitHub Actions worker in `process_gcov_job.py` runs the selected AOI/date request through catalogue review, exact-product downloads, HDF5 validation, raster extraction, flood and persistent-change screening, observed-date playback and private result storage. It uses the AOI and date window supplied by the signed job request; no Bangladesh study polygon is substituted. A result remains provisional until independent review evidence is recorded.
+
+Processing is limited by NISAR coverage, the AOI's available comparable acquisitions, the backend's 1,000 km² AOI ceiling and the worker resource limits. The worker requires four or more matching acquisition dates with at least 90% catalogue footprint coverage, then selects up to twelve actual dates and at most twenty-four granules. These are acquisition dates, not daily measurements. A location with insufficient NISAR observations returns a no-result explanation instead of a simulated layer.
+
+See `docs/RIVERSHIFT_PROCESSING_SETUP.md` for the GitHub and backend settings required before live job dispatch can run.
 
 ## Environment
 - Python 3.11 or newer.
@@ -72,7 +76,7 @@ See `README_08_measure_bankline_migration.md` and `river_shift/README_06_transec
 ### GCOV time-series feasibility audit
 Run `audit_gcov_acquisitions.py` against the NASA CMR UMM-G 1.6.7 catalogue manifest before downloading or analysing products. It requires at least three dates matching maturity, direction, relative orbit, frame, bandwidth, polarization, processing type, observation source, CRID, orbit accuracy, frame coverage and center; the requested frequency/diagonal term must be encoded as available. Each date must meet the AOI footprint threshold. This is only a product-level review gate; HDF5 layers, valid masks and exact grids remain to be checked. The default minimum is 90%.
 
-The GitHub Actions workflow `.github/workflows/river-shift-gcov-audit.yml` runs public catalogue discovery and footprint feasibility without downloading imagery. It runs automatically when the catalogue/audit code or audit workflow changes on this feature branch, and it can also be launched manually with a team-approved AOI/date window. The default Sirajganj–Kazipur AOI is explicitly a candidate and is not approved.
+The GitHub Actions workflow `.github/workflows/river-shift-gcov-audit.yml` runs public catalogue discovery and footprint feasibility without downloading imagery. It is launched manually with the user-selected AOI/date window. The processing workflow `.github/workflows/river-shift-gcov-process.yml` runs only after an authenticated user submits a RiverShift job.
 
 The archived live catalogue evidence is linked from the root README and judge guide. Catalogue footprint coverage is not valid raster coverage. The selected public product links redirect to Earthdata Login, so current HDF5 compatibility remains blocked pending an authenticated download. The exporter requires the exact-granule `.download.json` receipt, checks its maturity and source host, and binds the output COG to the sidecar with SHA-256 before analysis.
 
