@@ -40,6 +40,7 @@ Each script has its own method, inputs, outputs, validation requirements, limita
 - [07 Water classification validation](tools/river_shift/README_07_validate_water_classification.md)
 - [08 Signed bankline migration](tools/river_shift/README_08_measure_bankline_migration.md)
 - [09 GCOV time-series and AOI coverage audit](tools/river_shift/README_09_audit_gcov_acquisitions.md)
+- [10 Observed-date water time-series playback](tools/river_shift/README_10_observed_date_playback.md)
 
 ### Current implementation status
 Implemented in this feature branch:

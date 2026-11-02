@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
 import type { RiverShiftGeoJSON, RiverShiftReport } from '../riverShift/manifest';
-import { isRiverShiftGeoJSONApproved, isRiverShiftReportVerified, parseRiverShiftGeoJSON, parseRiverShiftReport } from '../riverShift/manifest';
+import { isRiverShiftGeoJSONApproved, isRiverShiftReportVerified, isRiverShiftTimeSeriesGeoJSONApproved, parseRiverShiftGeoJSON, parseRiverShiftReport } from '../riverShift/manifest';
+import { formatWktPolygon, parseWktPolygon, type Wgs84Point } from '../riverShift/aoi';
 import './river-shift.css';
 
 type Props = { onHome: () => void };
@@ -39,36 +40,13 @@ type CatalogueResponse = {
   query: Record<string, unknown>;
 };
 
+type LoadedGeoJSON = { fileName: string; sha256: string; data: RiverShiftGeoJSON };
+
 const API_BASE = ((import.meta.env.VITE_SARGUARDIAN_API_URL as string | undefined) || 'http://localhost:8000')
   .trim()
   .replace(/\/+$/, '');
 const GOOGLE_MAPS_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) || '';
 let mapsConfigured = false;
-
-function parseWktPolygon(wkt: string): [number, number][] {
-  const normalized = wkt.trim();
-  if (!/^POLYGON\s*\(\(/i.test(normalized) || !/\)\)\s*$/.test(normalized)) {
-    throw new Error('AOI must be a single-ring POLYGON WKT.');
-  }
-  const body = normalized.replace(/^POLYGON\s*\(\(/i, '').replace(/\)\)\s*$/, '');
-  const coordinates = body.split(',').map((pair) => {
-    const values = pair.trim().split(/\s+/).map(Number);
-    if (values.length !== 2 || !Number.isFinite(values[0]) || !Number.isFinite(values[1])) {
-      throw new Error('AOI has an invalid longitude/latitude pair.');
-    }
-    if (values[0] < -180 || values[0] > 180 || values[1] < -90 || values[1] > 90) {
-      throw new Error('AOI coordinate is outside WGS84 longitude/latitude limits.');
-    }
-    return [values[0], values[1]] as [number, number];
-  });
-  if (coordinates.length < 4) throw new Error('AOI needs 3 vertices plus a closing coordinate.');
-  const first = coordinates[0];
-  const last = coordinates[coordinates.length - 1];
-  if (first[0] !== last[0] || first[1] !== last[1]) {
-    throw new Error('AOI polygon must repeat its first coordinate at the end.');
-  }
-  return coordinates;
-}
 
 function formatDate(value?: string | null): string {
   if (!value) return 'Not supplied';
@@ -135,6 +113,8 @@ function ReportPanel({ report }: { report: RiverShiftReport }) {
     ? 'Flood inundation screening'
     : report.analysis_type === 'river_morphology_screening'
       ? 'River morphology screening'
+      : report.analysis_type === 'water_timeseries_screening'
+        ? 'Observed-date water time series'
       : report.analysis_type === 'classification_validation'
         ? 'Classification validation'
         : 'Bankline migration measurement';
@@ -213,13 +193,36 @@ export function RiverShiftPage({ onHome }: Props) {
   const [catalogueError, setCatalogueError] = useState('');
   const [report, setReport] = useState<RiverShiftReport | null>(null);
   const [reportError, setReportError] = useState('');
-  const [geoJSON, setGeoJSON] = useState<RiverShiftGeoJSON | null>(null);
-  const [geoJSONSha256, setGeoJSONSha256] = useState('');
+  const [geoJSONFiles, setGeoJSONFiles] = useState<LoadedGeoJSON[]>([]);
   const [geoJSONError, setGeoJSONError] = useState('');
-  const geoJSONApproved = report && geoJSON ? isRiverShiftGeoJSONApproved(report, geoJSONSha256) : false;
   const [mapError, setMapError] = useState('');
-  const mapElement = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<google.maps.Map | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [drawingAoi, setDrawingAoi] = useState(false);
+  const [aoiVertices, setAoiVertices] = useState<Wgs84Point[]>([]);
+  const [aoiError, setAoiError] = useState('');
+  const [timeSeriesIndex, setTimeSeriesIndex] = useState(0);
+  const [timeSeriesPlaying, setTimeSeriesPlaying] = useState(false);
+  const aoiMapElement = useRef<HTMLDivElement>(null);
+  const resultMapElement = useRef<HTMLDivElement>(null);
+  const aoiMapInstance = useRef<google.maps.Map | null>(null);
+  const resultMapInstance = useRef<google.maps.Map | null>(null);
+  const aoiPolygon = useRef<google.maps.Polygon | null>(null);
+  const aoiPreviewLine = useRef<google.maps.Polyline | null>(null);
+  const timeSeriesFrames = useMemo(() => (report?.time_series || []).flatMap((frame) => {
+    const loaded = geoJSONFiles.find((file) => file.fileName === frame.water_geojson
+      && file.sha256.toLowerCase() === frame.water_geojson_sha256.toLowerCase());
+    return loaded && isRiverShiftTimeSeriesGeoJSONApproved(report!, frame.date, loaded.sha256)
+      ? [{ ...frame, data: loaded.data }]
+      : [];
+  }), [report, geoJSONFiles]);
+  const playbackFrames = report?.analysis_type === 'water_timeseries_screening'
+    && report.time_series?.length === timeSeriesFrames.length ? timeSeriesFrames : [];
+  const currentTimeSeriesFrame = playbackFrames[timeSeriesIndex];
+  const verifiedGeoJSONFiles = useMemo(() => {
+    if (!report || report.analysis_type === 'water_timeseries_screening') return [];
+    return geoJSONFiles.filter((file) => isRiverShiftGeoJSONApproved(report, file.sha256));
+  }, [report, geoJSONFiles]);
+  const hasVerifiedOverlay = Boolean(currentTimeSeriesFrame || verifiedGeoJSONFiles.length);
 
   const searchCatalogue = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -259,8 +262,9 @@ export function RiverShiftPage({ onHome }: Props) {
     if (!file) return;
     setReportError('');
     setReport(null);
-    setGeoJSON(null);
-    setGeoJSONSha256('');
+    setGeoJSONFiles([]);
+    setTimeSeriesIndex(0);
+    setTimeSeriesPlaying(false);
     try {
       const payload = JSON.parse(await file.text()) as unknown;
       setReport(parseRiverShiftReport(payload));
@@ -269,25 +273,39 @@ export function RiverShiftPage({ onHome }: Props) {
     }
   };
 
-  const loadGeoJSON = async (file?: File) => {
-    if (!file) return;
+  const loadGeoJSONFiles = async (files?: FileList | File[]) => {
+    if (!files || !files.length) return;
     setGeoJSONError('');
-    setGeoJSON(null);
-    setGeoJSONSha256('');
     try {
-      const bytes = await file.arrayBuffer();
-      const digest = await crypto.subtle.digest('SHA-256', bytes);
-      setGeoJSONSha256(Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(''));
-      const payload = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-      setGeoJSON(parseRiverShiftGeoJSON(payload));
+      const loaded = await Promise.all(Array.from(files).map(async (file) => {
+        const bytes = await file.arrayBuffer();
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+        const payload = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+        return { fileName: file.name, sha256, data: parseRiverShiftGeoJSON(payload) };
+      }));
+      setGeoJSONFiles(loaded);
+      setTimeSeriesIndex(0);
+      setTimeSeriesPlaying(false);
     } catch (error) {
       setGeoJSONError(error instanceof Error ? error.message : 'Could not read the GeoJSON.');
     }
   };
 
+  const finishAoiDrawing = () => {
+    try {
+      setAoiWkt(formatWktPolygon(aoiVertices));
+      setAoiError('');
+      setDrawingAoi(false);
+      setAoiVertices([]);
+    } catch (error) {
+      setAoiError(error instanceof Error ? error.message : 'Could not finish the AOI polygon.');
+    }
+  };
+
   useEffect(() => {
-    if (!GOOGLE_MAPS_KEY || !mapElement.current) {
-      if (!GOOGLE_MAPS_KEY) setMapError('Google Maps API key is not configured. The GeoJSON download remains available for QGIS.');
+    if (!GOOGLE_MAPS_KEY) {
+      setMapError('Google Maps API key is not configured. Add it to Frontend/.env.local and restart Vite to enable AOI drawing and map overlays.');
       return;
     }
     let cancelled = false;
@@ -296,39 +314,109 @@ export function RiverShiftPage({ onHome }: Props) {
       mapsConfigured = true;
     }
     importLibrary('maps').then((mapsLibrary) => {
-      if (cancelled || !mapElement.current) return;
+      if (cancelled) return;
       const maps = mapsLibrary as google.maps.MapsLibrary;
-      const map = mapInstance.current || new maps.Map(mapElement.current, {
-        center: { lat: 25.2, lng: 89.6 },
-        zoom: 9,
+      const mapOptions: google.maps.MapOptions = {
+        center: { lat: 24.6, lng: 89.65 },
+        zoom: 8,
         mapTypeId: 'satellite',
         streetViewControl: false,
         mapTypeControl: true,
         fullscreenControl: true,
-      });
-      mapInstance.current = map;
-      map.data.forEach((feature) => map.data.remove(feature));
-      if (geoJSON && geoJSONApproved) {
-        map.data.addGeoJson(geoJSON as unknown as object);
-        map.data.setStyle((feature) => {
-          const name = String(feature.getProperty('class') || feature.getProperty('change_type') || '').toLowerCase();
-          const colour = name.includes('erosion') ? '#f07462'
-            : name.includes('deposition') ? '#5fd7a5'
-              : '#53b9f4';
-          return { fillColor: colour, strokeColor: colour, fillOpacity: 0.30, strokeWeight: 2 };
-        });
-        const bounds = new google.maps.LatLngBounds();
-        map.data.forEach((feature) => {
-          const geometry = feature.getGeometry();
-          if (geometry) geometry.forEachLatLng((point) => bounds.extend(point));
-        });
-        if (!bounds.isEmpty()) map.fitBounds(bounds);
+      };
+      if (aoiMapElement.current && !aoiMapInstance.current) {
+        aoiMapInstance.current = new maps.Map(aoiMapElement.current, mapOptions);
       }
+      if (resultMapElement.current && !resultMapInstance.current) {
+        resultMapInstance.current = new maps.Map(resultMapElement.current, mapOptions);
+      }
+      if (aoiMapInstance.current && resultMapInstance.current) setMapReady(true);
     }).catch((error: unknown) => {
       if (!cancelled) setMapError(error instanceof Error ? error.message : 'Google Maps could not be loaded.');
     });
     return () => { cancelled = true; };
-  }, [geoJSON, geoJSONApproved]);
+  }, []);
+
+  useEffect(() => {
+    const map = aoiMapInstance.current;
+    if (!mapReady || !map || !drawingAoi) return;
+    const listener = map.addListener('click', (event: google.maps.MapMouseEvent) => {
+      if (event.latLng) setAoiVertices((vertices) => [...vertices, [event.latLng!.lng(), event.latLng!.lat()]]);
+    });
+    return () => listener.remove();
+  }, [mapReady, drawingAoi]);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = aoiMapInstance.current;
+    if (!map) return;
+    if (aoiPolygon.current) aoiPolygon.current.setMap(null);
+    aoiPolygon.current = null;
+    let points: Wgs84Point[] = [];
+    try {
+      points = drawingAoi ? aoiVertices : parseWktPolygon(aoiWkt).slice(0, -1);
+    } catch {
+      points = drawingAoi ? aoiVertices : [];
+    }
+    if (points.length >= 3) {
+      if (aoiPreviewLine.current) aoiPreviewLine.current.setMap(null);
+      aoiPolygon.current = new google.maps.Polygon({
+        paths: points.map(([lng, lat]) => ({ lng, lat })),
+        strokeColor: '#70eee0',
+        strokeOpacity: 0.95,
+        strokeWeight: 3,
+        fillColor: '#51d9cc',
+        fillOpacity: 0.16,
+        clickable: false,
+      });
+      aoiPolygon.current.setMap(map);
+    } else if (points.length > 0) {
+      if (!aoiPreviewLine.current) aoiPreviewLine.current = new google.maps.Polyline({
+        strokeColor: '#70eee0', strokeOpacity: 0.95, strokeWeight: 3,
+      });
+      aoiPreviewLine.current.setPath(points.map(([lng, lat]) => ({ lng, lat })));
+      aoiPreviewLine.current.setMap(map);
+    } else if (aoiPreviewLine.current) {
+      aoiPreviewLine.current.setMap(null);
+    }
+    if (aoiWkt && !drawingAoi) {
+      const bounds = new google.maps.LatLngBounds();
+      points.forEach(([lng, lat]) => bounds.extend({ lng, lat }));
+      if (!bounds.isEmpty()) map.fitBounds(bounds);
+    }
+  }, [mapReady, drawingAoi, aoiVertices, aoiWkt]);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = resultMapInstance.current;
+    if (!map) return;
+    map.data.forEach((feature) => map.data.remove(feature));
+    const displayLayers = currentTimeSeriesFrame
+      ? [currentTimeSeriesFrame.data]
+      : verifiedGeoJSONFiles.map((file) => file.data);
+    displayLayers.forEach((layer) => map.data.addGeoJson(layer as unknown as object));
+    map.data.setStyle((feature) => {
+      const name = String(feature.getProperty('class') || feature.getProperty('change_type') || '').toLowerCase();
+      const colour = name.includes('erosion') ? '#f07462'
+        : name.includes('deposition') ? '#5fd7a5'
+          : '#53b9f4';
+      return { fillColor: colour, strokeColor: colour, fillOpacity: 0.34, strokeWeight: 2 };
+    });
+    const bounds = new google.maps.LatLngBounds();
+    map.data.forEach((feature) => {
+      const geometry = feature.getGeometry();
+      if (geometry) geometry.forEachLatLng((point) => bounds.extend(point));
+    });
+    if (!bounds.isEmpty()) map.fitBounds(bounds);
+  }, [mapReady, currentTimeSeriesFrame, verifiedGeoJSONFiles]);
+
+  useEffect(() => {
+    if (!timeSeriesPlaying || playbackFrames.length < 2) return;
+    const timer = window.setInterval(() => {
+      setTimeSeriesIndex((index) => (index + 1) % playbackFrames.length);
+    }, 1100);
+    return () => window.clearInterval(timer);
+  }, [timeSeriesPlaying, playbackFrames.length]);
 
   const resultType = useMemo(() => report ? report.analysis_type.replace(/_/g, ' ') : 'No result imported', [report]);
 
@@ -374,6 +462,25 @@ export function RiverShiftPage({ onHome }: Props) {
             Search metadata from the ASF DAAC archive. This action does not download products or run scientific analysis.
           </p>
           <form onSubmit={searchCatalogue} className="rs-form">
+            <section className="rs-aoi-draw" aria-label="Draw study area on the map">
+              <div className="rs-section-heading">
+                <div><p className="rs-kicker">STUDY AREA</p><h3>Draw AOI on satellite map</h3></div>
+              </div>
+              <p className="rs-muted">Click the map to add boundary vertices in order, then finish the polygon. The same WGS84 AOI is used for catalogue search.</p>
+              <div className="rs-map rs-aoi-map" ref={aoiMapElement} role="application" aria-label="Click-to-draw AOI map" />
+              {mapError && <p className="rs-warning-inline" role="status">{mapError}</p>}
+              <div className="rs-aoi-controls">
+                <button className="rs-secondary-button" type="button" disabled={!GOOGLE_MAPS_KEY || !mapReady || drawingAoi}
+                  onClick={() => { setAoiError(''); setAoiVertices([]); setDrawingAoi(true); }}>
+                  {drawingAoi ? 'Drawing… click the map' : 'Start drawing'}
+                </button>
+                <button className="rs-secondary-button" type="button" disabled={!drawingAoi || aoiVertices.length < 3} onClick={finishAoiDrawing}>Finish AOI</button>
+                <button className="rs-secondary-button" type="button" onClick={() => { setDrawingAoi(false); setAoiVertices([]); setAoiWkt(''); setAoiError(''); }}>Clear</button>
+                <span>{drawingAoi ? `${aoiVertices.length} vertex/vertices added` : 'Click “Start drawing” to place vertices'}</span>
+              </div>
+              {aoiError && <p className="rs-error" role="alert">{aoiError}</p>}
+              {!GOOGLE_MAPS_KEY && <p className="rs-warning-inline">Set VITE_GOOGLE_MAPS_API_KEY in Frontend/.env.local and restart the frontend to enable the map.</p>}
+            </section>
             <label className="rs-field rs-field-full">
               <span>Study area · WGS84 Polygon WKT</span>
               <textarea value={aoiWkt} onChange={(event) => setAoiWkt(event.target.value)}
@@ -476,19 +583,44 @@ export function RiverShiftPage({ onHome }: Props) {
           <label className="rs-upload"><span>Import result JSON</span><small>Flood, morphology or validation report</small>
             <input type="file" accept=".json,application/json" onChange={(event) => void loadReport(event.target.files?.[0])} />
           </label>
-          <label className="rs-upload"><span>Import change GeoJSON</span><small>Erosion, deposition or new-water polygons</small>
-            <input type="file" accept=".geojson,.json,application/geo+json,application/json" onChange={(event) => void loadGeoJSON(event.target.files?.[0])} />
+          <label className="rs-upload"><span>Import change GeoJSON layer(s)</span><small>For playback, select every `water_YYYY-MM-DD.geojson` named in the report</small>
+            <input type="file" multiple accept=".geojson,.json,application/geo+json,application/json" onChange={(event) => void loadGeoJSONFiles(event.target.files || undefined)} />
           </label>
         </div>
         {reportError && <p className="rs-error" role="alert">{reportError}</p>}
         {geoJSONError && <p className="rs-error" role="alert">{geoJSONError}</p>}
         {report && <ReportPanel report={report} />}
+        {report?.analysis_type === 'water_timeseries_screening' && (
+          <section className="rs-timeseries" aria-label="Observed acquisition playback">
+            <div className="rs-section-heading"><div><p className="rs-kicker">OBSERVED ACQUISITIONS</p><h3>Water change playback</h3></div>
+              <span className="rs-chip">NO DAILY INTERPOLATION</span></div>
+            {report.quality.release_status !== 'VERIFIED'
+              ? <p className="rs-warning-inline">Playback and map layers stay hidden until the report is independently reviewed and marked VERIFIED.</p>
+              : playbackFrames.length !== (report.time_series || []).length
+                ? <p className="rs-warning-inline">Import every report-listed GeoJSON file in one selection. Each filename and SHA-256 must match before playback starts.</p>
+                : playbackFrames.length < 2
+                  ? <p className="rs-warning-inline">At least two verified observation frames are required to play this time series.</p>
+                  : <>
+                    <div className="rs-playback-controls">
+                      <button className="rs-secondary-button" type="button" onClick={() => setTimeSeriesIndex((index) => (index - 1 + playbackFrames.length) % playbackFrames.length)}>Previous</button>
+                      <button className="rs-primary-button" type="button" onClick={() => setTimeSeriesPlaying((value) => !value)}>{timeSeriesPlaying ? 'Pause' : 'Play'}</button>
+                      <button className="rs-secondary-button" type="button" onClick={() => setTimeSeriesIndex((index) => (index + 1) % playbackFrames.length)}>Next</button>
+                      <label className="rs-date-slider"><span>Acquisition date</span>
+                        <input type="range" min={0} max={playbackFrames.length - 1} value={timeSeriesIndex}
+                          onChange={(event) => { setTimeSeriesPlaying(false); setTimeSeriesIndex(Number(event.target.value)); }} />
+                      </label>
+                    </div>
+                    {currentTimeSeriesFrame && <p className="rs-info-banner">Observed {currentTimeSeriesFrame.date} · candidate open-water area {currentTimeSeriesFrame.water_area_km2.toFixed(3)} km² · valid samples {(currentTimeSeriesFrame.valid_pixel_fraction * 100).toFixed(1)}%</p>}
+                  </>}
+          </section>
+        )}
         <section className="rs-map-section">
           <div className="rs-section-heading"><div><p className="rs-kicker">GEOSPATIAL OUTPUT</p><h3>Change map</h3></div></div>
           {mapError && <p className="rs-warning-inline">{mapError}</p>}
-          <div className="rs-map" ref={mapElement} role="img" aria-label="Satellite basemap; RiverShift change polygons are displayed only for verified reports" />
-          {geoJSON && geoJSONApproved && <p className="rs-muted">{geoJSON.features.length} verified GeoJSON feature(s) displayed; its SHA-256 matches the report. Use the source report's date and legend when interpreting polygons.</p>}
-          {geoJSON && !geoJSONApproved && <p className="rs-warning-inline" role="status">GeoJSON is loaded for review but is not drawn because the report is unverified or its recorded output checksum does not match.</p>}
+          <div className="rs-map" ref={resultMapElement} role="img" aria-label="Satellite basemap; verified RiverShift change polygons only" />
+          <div className="rs-legend"><span><i className="rs-swatch rs-erosion" />Erosion candidate</span><span><i className="rs-swatch rs-deposition" />Deposition candidate</span><span><i className="rs-swatch rs-water" />New water / observed water candidate</span></div>
+          {hasVerifiedOverlay && <p className="rs-muted">Verified layer(s) are drawn; each GeoJSON SHA-256 matches the loaded report. Candidate classes require scientific interpretation and are not field-confirmed land change.</p>}
+          {report && geoJSONFiles.length > 0 && !hasVerifiedOverlay && <p className="rs-warning-inline" role="status">Loaded GeoJSON is not drawn: the report is not VERIFIED, the checksum does not match, or the complete time-series layer set is missing.</p>}
         </section>
         {!report && <div className="rs-empty-state"><strong>{resultType}</strong><p>No scientific result is loaded. Run a script and import its JSON report; no demo measurement is shown here.</p></div>}
       </section>

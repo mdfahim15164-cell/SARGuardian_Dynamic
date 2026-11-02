@@ -115,12 +115,13 @@ Evidence expected:
 - [x] Add JSON/GeoJSON result import.
 - [x] Display provenance, metrics and scientific warnings.
 - [x] Add satellite map layer for imported GeoJSON when Google Maps is configured.
-- [x] Add route and manifest tests.
+- [x] Draw a WGS84 AOI on the satellite map and pass the validated polygon to catalogue search.
+- [x] Add observed-acquisition water time-series exports and a discrete-date play/pause/step viewer with exact file/checksum matching.
+- [x] Add an erosion/deposition/new-water legend.
+- [x] Add AOI, manifest, and time-series report gate tests.
 - [ ] Configure the public Vercel map key and API URL.
 - [ ] Configure Render CORS to allow the deployed frontend origin.
 - [ ] Import real NISAR-derived results and verify each layer's geographic alignment.
-- [ ] Add before/during/after layer controls and an observation timeline.
-- [ ] Add a legend for water coverage, erosion candidates, deposition candidates and bankline/transect data.
 - [ ] Verify keyboard/touch responsiveness and judge-friendly empty/error states.
 - [ ] Add a one-click sample workflow only after a real, openly shareable case study exists.
 

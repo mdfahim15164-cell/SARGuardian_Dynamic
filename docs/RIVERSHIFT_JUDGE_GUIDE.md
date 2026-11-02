@@ -49,11 +49,14 @@ No flood area, erosion/deposition area, accuracy value or real bank-migration ra
 
 ## Judge walkthrough
 
-1. Open `/river-shift` and use the ASF catalogue controls to discover GCOV metadata. The results banner distinguishes catalogue discovery from download and analysis.
-2. Read the imported report's release status, source granule IDs/checksums, input checksums and limitations.
-3. Observe that `PROVISIONAL` reports do not display metric cards and that GeoJSON does not draw until a matching verified report is loaded.
-4. Reproduce the synthetic regression suite from `tools/river_shift`; tests verify software behavior only and are not presented as real-world accuracy.
-5. Use the archived manifest and audit to inspect the candidate dates, group signature, footprint percentages and explicit non-HDF5 caveat.
+1. Configure `VITE_GOOGLE_MAPS_API_KEY` in `Frontend/.env.local` (Google Maps JavaScript API enabled), then restart the frontend. This key is browser-visible and should be restricted to the team's allowed origins.
+2. Open `/river-shift`; use **Start drawing** and click the satellite map to outline the candidate AOI. **Finish AOI** creates a closed WGS84 polygon used by the ASF catalogue form. The boundary remains a candidate until the science team approves it.
+3. Run `run_water_timeseries.py` with the real comparable acquisitions. Import its `river_shift_timeseries.json` and all report-listed date GeoJSON files. The play control steps between exact observation dates and explicitly does not interpolate daily states.
+4. Read the imported report's release status, source granule IDs/checksums, valid-pixel coverage, input checksums, sensitivity scenarios and limitations.
+5. Observe that `PROVISIONAL` reports do not display metric cards or draw GeoJSON. The layer must pass the review/provenance gate and exact SHA-256 match.
+6. The map legend separates erosion candidates, deposition candidates, and water candidates. These are screening classes, not field-confirmed land loss/accretion or flood causation.
+7. Reproduce the synthetic regression suite from `tools/river_shift`; tests verify software behavior only and are not presented as real-world accuracy.
+8. Use the archived manifest and audit to inspect the candidate dates, group signature, footprint percentages and explicit non-HDF5 caveat.
 
 ## Reproducibility and reference links
 

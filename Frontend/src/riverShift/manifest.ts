@@ -15,6 +15,7 @@ export type RiverShiftReport = {
     [key: string]: unknown;
   };
   outputs?: Record<string, unknown>;
+  time_series?: RiverShiftTimeSeriesFrame[];
 };
 
 export type RiverShiftGeoJSON = {
@@ -27,6 +28,15 @@ export type RiverShiftGeoJSON = {
       coordinates: unknown;
     };
   }>;
+};
+
+export type RiverShiftTimeSeriesFrame = {
+  date: string;
+  granule_name?: string | null;
+  water_area_km2: number;
+  valid_pixel_fraction: number;
+  water_geojson: string;
+  water_geojson_sha256: string;
 };
 
 export function isRiverShiftReportVerified(report: RiverShiftReport): boolean {
@@ -51,6 +61,16 @@ export function isRiverShiftGeoJSONApproved(report: RiverShiftReport, sha256: st
   return approvedDigests.includes(sha256.toLowerCase());
 }
 
+export function isRiverShiftTimeSeriesGeoJSONApproved(
+  report: RiverShiftReport,
+  date: string,
+  sha256: string,
+): boolean {
+  if (!isRiverShiftReportVerified(report) || !/^[0-9a-f]{64}$/i.test(sha256)) return false;
+  return (report.time_series || []).some((frame) => frame.date === date
+    && frame.water_geojson_sha256.toLowerCase() === sha256.toLowerCase());
+}
+
 export function parseRiverShiftReport(value: unknown): RiverShiftReport {
   if (!value || typeof value !== 'object') {
     throw new Error('Result JSON must be an object.');
@@ -64,6 +84,7 @@ export function parseRiverShiftReport(value: unknown): RiverShiftReport {
     'river_morphology_screening',
     'classification_validation',
     'bankline_migration',
+    'water_timeseries_screening',
   ];
   if (typeof candidate.analysis_type !== 'string' || !validTypes.includes(candidate.analysis_type)) {
     throw new Error('Unsupported RiverShift analysis type.');
@@ -80,6 +101,35 @@ export function parseRiverShiftReport(value: unknown): RiverShiftReport {
   const quality = candidate.quality as Record<string, unknown>;
   if (typeof quality.status !== 'string' || !quality.status.trim()) {
     throw new Error('Result quality.status is required.');
+  }
+  const timeSeries = candidate.time_series;
+  if (timeSeries !== undefined && !Array.isArray(timeSeries)) {
+    throw new Error('Result time_series must be an array.');
+  }
+  const parsedTimeSeries = (timeSeries || []).map((raw, index) => {
+    if (!raw || typeof raw !== 'object') throw new Error(`Time-series frame ${index + 1} is invalid.`);
+    const frame = raw as Record<string, unknown>;
+    const parsedDate = typeof frame.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(frame.date)
+      ? new Date(`${frame.date}T00:00:00Z`)
+      : null;
+    if (typeof frame.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(frame.date)
+      || !parsedDate || !Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== frame.date
+      || typeof frame.water_geojson !== 'string' || !frame.water_geojson.trim()
+      || typeof frame.water_geojson_sha256 !== 'string' || !/^[0-9a-f]{64}$/i.test(frame.water_geojson_sha256)
+      || typeof frame.water_area_km2 !== 'number' || !Number.isFinite(frame.water_area_km2)
+      || typeof frame.valid_pixel_fraction !== 'number' || !Number.isFinite(frame.valid_pixel_fraction)
+      || frame.valid_pixel_fraction < 0 || frame.valid_pixel_fraction > 1) {
+      throw new Error(`Time-series frame ${index + 1} has invalid date, metrics, or output checksum.`);
+    }
+    return frame as unknown as RiverShiftTimeSeriesFrame;
+  });
+  for (let index = 1; index < parsedTimeSeries.length; index += 1) {
+    if (parsedTimeSeries[index - 1].date >= parsedTimeSeries[index].date) {
+      throw new Error('Time-series dates must be strictly increasing.');
+    }
+  }
+  if (candidate.analysis_type === 'water_timeseries_screening' && parsedTimeSeries.length < 2) {
+    throw new Error('Water time-series reports must contain at least two observed acquisition dates.');
   }
   const metrics: Record<string, number | null> = {};
   for (const [key, raw] of Object.entries(candidate.metrics as Record<string, unknown>)) {
@@ -101,6 +151,7 @@ export function parseRiverShiftReport(value: unknown): RiverShiftReport {
     metrics,
     quality: quality as RiverShiftReport['quality'],
     outputs: candidate.outputs as Record<string, unknown> | undefined,
+    time_series: parsedTimeSeries,
   };
 }
 

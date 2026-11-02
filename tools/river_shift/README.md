@@ -13,6 +13,7 @@ This folder provides a first local scientific workflow:
 7. Validate a binary water mask against an independently prepared reference raster.
 8. Measure signed bankline displacement along independently digitised transects.
 9. Audit whether at least three compatible GCOV dates cover the AOI sufficiently.
+10. Export an observed-date water time series for discrete, evidence-preserving dashboard playback.
 
 This is not yet a cloud-dispatched, end-to-end job pipeline. Backend catalogue discovery is available separately. Large HDF5 processing should only be enabled in a worker after an AOI/product feasibility run and resource review.
 
@@ -61,6 +62,7 @@ Read these task-specific documents before each script:
 - README_07_validate_water_classification.md
 - README_08_measure_bankline_migration.md
 - README_09_audit_gcov_acquisitions.md
+- README_10_observed_date_playback.md
 
 ## Bankline transect measurement
 For signed bankline movement, supply two dated banklines and user-oriented transects as standard WGS84 GeoJSON. The tool reprojects those inputs into the declared projected metre `--analysis-crs` before measuring. Each transect must intersect each bankline exactly once; ambiguous braided-channel intersections are rejected. The sign convention is start-to-end along the transect and must be declared in `--positive-direction-label`.

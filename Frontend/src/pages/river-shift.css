@@ -72,6 +72,18 @@
 .rs-reference pre { max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; color: #d3e4e9; font-size: 10px; }
 .rs-map-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(149, 194, 208, .14); }
 .rs-map { width: 100%; min-height: 430px; overflow: hidden; border: 1px solid rgba(149, 194, 208, .16); border-radius: 12px; background: #071d2c; }
+.rs-aoi-draw, .rs-timeseries { display: grid; gap: 10px; padding: 15px; border: 1px solid rgba(103, 201, 198, .2); border-radius: 12px; background: rgba(32, 116, 120, .06); }
+.rs-aoi-draw h3, .rs-timeseries h3 { margin: 0; color: #edf9fc; font: 700 17px 'Manrope', sans-serif; letter-spacing: -.035em; }
+.rs-aoi-map { min-height: 310px; }
+.rs-aoi-controls, .rs-playback-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.rs-aoi-controls > span { color: #91acbb; font-size: 10px; }
+.rs-secondary-button { padding: 9px 12px; border: 1px solid rgba(142, 190, 207, .24); border-radius: 8px; color: #cce6ee; background: #09283a; font-size: 10px; font-weight: 700; cursor: pointer; }
+.rs-secondary-button:disabled { cursor: not-allowed; opacity: .5; }
+.rs-date-slider { display: grid; flex: 1; min-width: 180px; gap: 4px; color: #b4cbd4; font-size: 10px; }
+.rs-date-slider input { width: 100%; accent-color: #6de2d4; }
+.rs-legend { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 10px; color: #a9c2cc; font-size: 10px; }
+.rs-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.rs-swatch { width: 11px; height: 11px; border-radius: 3px; }.rs-erosion { background: #f07462; }.rs-deposition { background: #5fd7a5; }.rs-water { background: #53b9f4; }
 .rs-empty-state { display: grid; justify-items: center; gap: 8px; padding: 30px 15px; color: #8daab9; text-align: center; }
 .rs-empty-state strong { color: #d8eaf0; font-size: 12px; text-transform: capitalize; }.rs-empty-state p { max-width: 480px; margin: 0; font-size: 10px; line-height: 1.65; }
 .rs-footer { max-width: 1440px; margin: 28px auto 0; padding: 16px 0; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-top: 1px solid rgba(155, 204, 220, .15); color: #7f9eac; font-size: 9px; }
