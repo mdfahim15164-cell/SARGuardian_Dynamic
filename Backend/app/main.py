@@ -46,6 +46,16 @@ from .displacements import (
 )
 from .models import CatalogResponse, CatalogSearchRequest
 from .river_shift import router as river_shift_router
+from .river_shift_jobs import (
+    CreateRiverShiftJobRequest,
+    RiverShiftJobResponse,
+    RiverShiftWorkerCallback,
+    callback_signature_is_valid as river_shift_callback_signature_is_valid,
+    dispatch_river_shift_workflow,
+    discover_request_manifest,
+    request_fingerprint as river_shift_request_fingerprint,
+    validate_callback_contract as validate_river_shift_callback_contract,
+)
 from .persistence import (
     PersistenceConfigurationError,
     PersistenceConflictError,
@@ -355,6 +365,174 @@ def get_job(job_id: UUID, user: dict = Depends(get_current_user)) -> JobResponse
     if not record:
         raise HTTPException(status_code=404, detail="Processing job was not found for this user.")
     return _job_response(record)
+
+
+def _river_shift_job_response(record: dict) -> RiverShiftJobResponse:
+    return RiverShiftJobResponse.model_validate(record)
+
+
+@app.post("/api/river-shift/jobs", response_model=RiverShiftJobResponse)
+def create_river_shift_job(request: CreateRiverShiftJobRequest, user: dict = Depends(get_current_user)) -> RiverShiftJobResponse:
+    settings = get_settings()
+    if not settings.river_shift_actions_enabled:
+        raise HTTPException(status_code=503, detail="RiverShift live processing is not configured yet. The backend needs its RiverShift GitHub dispatch token, callback secret, public API URL, and enabled workflow settings.")
+    owner_uid = _required_owner_uid(user)
+    request_values = request.model_dump(mode="json")
+    try:
+        manifest, granule_names = discover_request_manifest(request)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("RiverShift CMR preflight failed")
+        raise HTTPException(status_code=502, detail="NASA CMR discovery failed; no RiverShift job was created.") from None
+    fingerprint = river_shift_request_fingerprint(request_values, manifest)
+    store = _require_store()
+    try:
+        existing = store.get_river_shift_job_by_idempotency(owner_uid, request.idempotency_key)
+    except PersistenceError:
+        raise HTTPException(status_code=503, detail="Could not check RiverShift job persistence.") from None
+    if existing:
+        if existing.get("request_fingerprint") != fingerprint:
+            raise HTTPException(status_code=409, detail="This idempotency key is already bound to another RiverShift request.")
+        return _river_shift_job_response(existing)
+    values = {
+        "id": str(uuid4()), "owner_uid": owner_uid, "idempotency_key": request.idempotency_key,
+        "state": JobState.QUEUED.value, "stage": "queued",
+        "aoi_wkt": request.aoi_wkt, "start_date": request.start_date.isoformat(), "end_date": request.end_date.isoformat(),
+        "maturity": request.maturity, "frequency": request.frequency, "covariance_term": request.covariance_term,
+        "request_fingerprint": fingerprint,
+        "request_snapshot": request_values | {"event_date_basis": "user-supplied; authoritative gauge validation not configured"},
+        "manifest_snapshot": manifest,
+    }
+    try:
+        record = store.create_river_shift_job(values)
+        if record.get("request_fingerprint") != fingerprint:
+            raise HTTPException(status_code=409, detail="This idempotency key is already bound to another RiverShift request.")
+        record = store.update_river_shift_job(UUID(str(record["id"])), {"state": JobState.DISPATCHING.value, "stage": "dispatching"}, expected_state=JobState.QUEUED.value)
+    except HTTPException:
+        raise
+    except PersistenceConflictError:
+        try:
+            current = store.get_river_shift_job(owner_uid, UUID(str(values["id"])))
+        except PersistenceError:
+            current = None
+        if current:
+            return _river_shift_job_response(current)
+        raise HTTPException(status_code=409, detail="A RiverShift job is already active for this account.") from None
+    except PersistenceError:
+        raise HTTPException(status_code=503, detail="Could not create the RiverShift job.") from None
+    try:
+        dispatch_river_shift_workflow(settings, UUID(str(record["id"])), request_values, granule_names, fingerprint)
+    except RuntimeError as exc:
+        message = str(exc) if "disabled" in str(exc).lower() else "GitHub Actions could not accept this RiverShift job. Check backend dispatch settings and repository workflow secrets."
+        try:
+            record = store.update_river_shift_job(UUID(str(record["id"])), {
+                "state": JobState.FAILED.value, "stage": "dispatch_failed",
+                "error_code": "GITHUB_DISPATCH_FAILED", "error_message": message,
+            }, expected_state=JobState.DISPATCHING.value)
+        except PersistenceError:
+            raise HTTPException(status_code=503, detail="RiverShift dispatch failed and job status could not be persisted.") from None
+    except PersistenceError:
+        raise HTTPException(status_code=503, detail="GitHub Actions accepted the RiverShift job but its state could not be recorded.") from None
+    return _river_shift_job_response(record)
+
+
+@app.get("/api/river-shift/jobs", response_model=list[RiverShiftJobResponse])
+def list_river_shift_jobs(user: dict = Depends(get_current_user)) -> list[RiverShiftJobResponse]:
+    try:
+        records = _require_store().list_river_shift_jobs(_required_owner_uid(user))
+    except PersistenceError:
+        raise HTTPException(status_code=503, detail="Could not list RiverShift jobs.") from None
+    return [_river_shift_job_response(record) for record in records]
+
+
+@app.get("/api/river-shift/jobs/{job_id}", response_model=RiverShiftJobResponse)
+def get_river_shift_job(job_id: UUID, user: dict = Depends(get_current_user)) -> RiverShiftJobResponse:
+    try:
+        record = _require_store().get_river_shift_job(_required_owner_uid(user), job_id)
+    except PersistenceError:
+        raise HTTPException(status_code=503, detail="Could not read the RiverShift job.") from None
+    if not record:
+        raise HTTPException(status_code=404, detail="RiverShift job was not found for this account.")
+    return _river_shift_job_response(record)
+
+
+@app.post("/api/river-shift/jobs/{job_id}/callback")
+async def update_river_shift_job_from_worker(job_id: UUID, request: Request) -> dict[str, str]:
+    body = await request.body()
+    settings = get_settings()
+    if not river_shift_callback_signature_is_valid(settings.river_shift_callback_secret, body, request.headers.get("X-SARGuardian-Signature")):
+        raise HTTPException(status_code=401, detail="Invalid RiverShift worker callback signature.")
+    try:
+        payload = RiverShiftWorkerCallback.model_validate_json(body)
+        if payload.job_id != job_id:
+            raise HTTPException(status_code=409, detail="Worker callback is not bound to this job.")
+        store = _require_store()
+        record = store.get_river_shift_job_unscoped(job_id)
+    except PersistenceError:
+        raise HTTPException(status_code=503, detail="Could not read RiverShift worker job state.") from None
+    if not record:
+        raise HTTPException(status_code=404, detail="RiverShift job was not found.")
+    if payload.request_fingerprint != record.get("request_fingerprint"):
+        raise HTTPException(status_code=409, detail="Worker callback fingerprint does not match the immutable request.")
+    current = JobState(record["state"])
+    target = JobState(payload.state)
+    sequence = int(record.get("callback_sequence") or 0)
+    if payload.sequence <= sequence:
+        if payload.sequence == sequence and current == target and record.get("stage") == payload.stage:
+            return {"status": "accepted", "job_id": str(job_id), "job_status": current.value}
+        raise HTTPException(status_code=409, detail="RiverShift worker callback is stale or duplicated.")
+    if payload.sequence != sequence + 1:
+        raise HTTPException(status_code=409, detail="RiverShift worker callback sequence is out of order.")
+    if record.get("github_run_id") and record["github_run_id"] != payload.github_run_id:
+        raise HTTPException(status_code=409, detail="RiverShift worker callback belongs to a different GitHub run.")
+    allowed = {
+        (JobState.DISPATCHING, JobState.RUNNING), (JobState.DISPATCHING, JobState.FAILED),
+        (JobState.RUNNING, JobState.RUNNING), (JobState.RUNNING, JobState.SUCCEEDED),
+        (JobState.RUNNING, JobState.FAILED),
+    }
+    if (current, target) not in allowed:
+        raise HTTPException(status_code=409, detail="RiverShift worker callback requested an invalid state transition.")
+    if target == JobState.SUCCEEDED:
+        validate_river_shift_callback_contract(payload)
+    updates = {
+        "state": target.value, "stage": payload.stage, "callback_sequence": payload.sequence,
+        "github_run_id": payload.github_run_id, "github_run_url": payload.github_run_url,
+        "error_code": payload.error_code, "error_message": payload.error_message,
+        "result_summary": payload.result_summary, "artifact_manifest": payload.artifact_manifest,
+    }
+    try:
+        store.update_river_shift_job(job_id, updates, expected_state=current.value, expected_sequence=sequence)
+    except PersistenceConflictError:
+        raise HTTPException(status_code=409, detail="RiverShift job changed while processing this callback.") from None
+    except PersistenceError:
+        raise HTTPException(status_code=503, detail="Could not persist the RiverShift worker callback.") from None
+    return {"status": "accepted", "job_id": str(job_id), "job_status": target.value}
+
+
+@app.get("/api/river-shift/jobs/{job_id}/artifacts/{artifact_index}")
+def download_river_shift_artifact(job_id: UUID, artifact_index: int, user: dict = Depends(get_current_user)) -> Response:
+    if artifact_index < 0 or artifact_index > 100:
+        raise HTTPException(status_code=404, detail="Artifact was not found.")
+    try:
+        record = _require_store().get_river_shift_job(_required_owner_uid(user), job_id)
+    except PersistenceError:
+        raise HTTPException(status_code=503, detail="Could not read the RiverShift artifact record.") from None
+    artifacts = record.get("artifact_manifest") if record else None
+    if not isinstance(artifacts, list) or artifact_index >= len(artifacts):
+        raise HTTPException(status_code=404, detail="Artifact was not found for this account.")
+    item = artifacts[artifact_index]
+    try:
+        metadata, content = download_private_result(str(item["drive_file_id"]))
+    except (DriveUploadError, KeyError, TypeError):
+        raise HTTPException(status_code=502, detail="Could not retrieve the private RiverShift result.") from None
+    if len(content) != item.get("bytes") or hashlib.sha256(content).hexdigest() != item.get("sha256"):
+        raise HTTPException(status_code=502, detail="Private RiverShift artifact checksum verification failed.")
+    if len(content) > 4_000_000:
+        raise HTTPException(status_code=413, detail="This artifact is too large for the web preview. Download it from the private Google Drive result folder.")
+    filename = str(item.get("name", "river-shift-result.bin")).replace('"', "")
+    media_type = "application/geo+json" if filename.lower().endswith((".geojson", ".json")) else "application/octet-stream"
+    return Response(content=content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "private, no-store"})
 
 
 def _validate_displacement_request(request: CreateDisplacementJobRequest) -> None:

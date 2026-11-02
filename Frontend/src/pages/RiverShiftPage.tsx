@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import type { User } from 'firebase/auth';
 import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
+import { createRiverShiftJob, downloadRiverShiftArtifact, getRiverShiftJob, type RiverShiftJob } from '../api/catalog';
 import type { RiverShiftGeoJSON, RiverShiftReport } from '../riverShift/manifest';
 import { isRiverShiftGeoJSONApproved, isRiverShiftReportVerified, isRiverShiftTimeSeriesGeoJSONApproved, parseRiverShiftGeoJSON, parseRiverShiftReport } from '../riverShift/manifest';
 import { formatWktPolygon, parseWktPolygon, type Wgs84Point } from '../riverShift/aoi';
 import './river-shift.css';
 
-type Props = { onHome: () => void };
+type Props = {
+  onHome: () => void;
+  user: User | null;
+  firebaseConfigured: boolean;
+  authState: 'idle' | 'loading' | 'ready' | 'error';
+  onSignIn: () => Promise<void>;
+  onSignOut: () => Promise<void>;
+};
 
 type CatalogueProduct = {
   granule_name: string;
@@ -180,7 +189,7 @@ function ReportPanel({ report }: { report: RiverShiftReport }) {
   );
 }
 
-export function RiverShiftPage({ onHome }: Props) {
+export function RiverShiftPage({ onHome, user, firebaseConfigured, authState, onSignIn, onSignOut }: Props) {
   const [aoiWkt, setAoiWkt] = useState('');
   const [startDate, setStartDate] = useState('2026-06-17');
   const [endDate, setEndDate] = useState('2026-10-31');
@@ -202,6 +211,14 @@ export function RiverShiftPage({ onHome }: Props) {
   const [aoiError, setAoiError] = useState('');
   const [timeSeriesIndex, setTimeSeriesIndex] = useState(0);
   const [timeSeriesPlaying, setTimeSeriesPlaying] = useState(false);
+  const [eventDate, setEventDate] = useState('');
+  const [scienceFrequency, setScienceFrequency] = useState<'frequencyA' | 'frequencyB'>('frequencyA');
+  const [covarianceTerm, setCovarianceTerm] = useState('HHHH');
+  const [thresholdMethod, setThresholdMethod] = useState<'otsu' | 'manual'>('otsu');
+  const [thresholdDb, setThresholdDb] = useState('-15');
+  const [riverJob, setRiverJob] = useState<RiverShiftJob | null>(null);
+  const [riverJobBusy, setRiverJobBusy] = useState(false);
+  const [riverJobError, setRiverJobError] = useState('');
   const aoiMapElement = useRef<HTMLDivElement>(null);
   const resultMapElement = useRef<HTMLDivElement>(null);
   const aoiMapInstance = useRef<google.maps.Map | null>(null);
@@ -223,6 +240,62 @@ export function RiverShiftPage({ onHome }: Props) {
     return geoJSONFiles.filter((file) => isRiverShiftGeoJSONApproved(report, file.sha256));
   }, [report, geoJSONFiles]);
   const hasVerifiedOverlay = Boolean(currentTimeSeriesFrame || verifiedGeoJSONFiles.length);
+
+  useEffect(() => {
+    if (!user || !riverJob || !['queued', 'dispatching', 'running'].includes(riverJob.state)) return undefined;
+    const timer = window.setInterval(() => {
+      void getRiverShiftJob(riverJob.id, user).then(setRiverJob).catch((error: unknown) => {
+        setRiverJobError(error instanceof Error ? error.message : 'Could not refresh processing status.');
+      });
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [riverJob, user]);
+
+  const startLiveProcessing = async () => {
+    setRiverJobError('');
+    if (!user) {
+      setRiverJobError('Sign in with Google before starting live processing.');
+      return;
+    }
+    if (!eventDate) {
+      setRiverJobError('Add the event date from your independent event record before processing.');
+      return;
+    }
+    if (maturity === 'ALL') {
+      setRiverJobError('Choose one maturity. BETA and PROVISIONAL products cannot be mixed in a scientific time series.');
+      return;
+    }
+    setRiverJobBusy(true);
+    try {
+      const job = await createRiverShiftJob({
+        aoiWkt, startDate, endDate, eventDate, maturity,
+        frequency: scienceFrequency, covarianceTerm, thresholdMethod,
+        ...(thresholdMethod === 'manual' ? { thresholdDb: Number(thresholdDb) } : {}),
+        idempotencyKey: crypto.randomUUID().replace(/-/g, ''),
+      }, user);
+      setRiverJob(job);
+    } catch (error) {
+      setRiverJobError(error instanceof Error ? error.message : 'Could not start live RiverShift processing.');
+    } finally {
+      setRiverJobBusy(false);
+    }
+  };
+
+  const saveRiverArtifact = async (artifactIndex: number, fileName: string) => {
+    if (!riverJob || !user) return;
+    setRiverJobError('');
+    try {
+      const blob = await downloadRiverShiftArtifact(riverJob.id, artifactIndex, user);
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      setRiverJobError(error instanceof Error ? error.message : 'Could not download this private result.');
+    }
+  };
 
   const searchCatalogue = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -428,7 +501,12 @@ export function RiverShiftPage({ onHome }: Props) {
           <span className="rs-brand-mark">RS</span>
           <div><strong>RiverShift</strong><small>FLOOD & RIVER CHANGE INTELLIGENCE</small></div>
         </div>
-        <span className="rs-challenge-tag">NASA SPACE APPS 2026 · DANCING WITH THE SARS</span>
+        <div className="rs-header-actions">
+          <span className="rs-challenge-tag">NASA SPACE APPS 2026 · DANCING WITH THE SARS</span>
+          {user
+            ? <button className="rs-secondary-button" type="button" onClick={() => void onSignOut()}>{user.displayName || 'Account'} · Sign out</button>
+            : <button className="rs-secondary-button" type="button" disabled={!firebaseConfigured || authState === 'loading'} onClick={() => void onSignIn()}>{firebaseConfigured ? 'Sign in to process' : 'Sign-in setup required'}</button>}
+        </div>
       </header>
 
       <section className="rs-hero">
@@ -491,6 +569,7 @@ export function RiverShiftPage({ onHome }: Props) {
             <div className="rs-fields-two">
               <label className="rs-field"><span>Start date</span><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required /></label>
               <label className="rs-field"><span>End date</span><input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} required /></label>
+              <label className="rs-field"><span>Event date · from independent record</span><input type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} min={startDate} max={endDate} /></label>
               <label className="rs-field"><span>Processing maturity</span>
                 <select value={maturity} onChange={(event) => setMaturity(event.target.value as typeof maturity)}>
                   <option value="PROVISIONAL">PROVISIONAL</option><option value="BETA">BETA</option><option value="ALL">ALL (audit only)</option>
@@ -516,10 +595,31 @@ export function RiverShiftPage({ onHome }: Props) {
                 </select>
                 <small>FULL/PARTIAL refers to NISAR frame coverage, not the percentage of your AOI covered. That must be checked separately.</small>
               </label>
+              <label className="rs-field"><span>Science frequency</span>
+                <select value={scienceFrequency} onChange={(event) => setScienceFrequency(event.target.value as typeof scienceFrequency)}>
+                  <option value="frequencyA">Frequency A</option><option value="frequencyB">Frequency B</option>
+                </select>
+              </label>
+              <label className="rs-field"><span>Diagonal covariance term</span>
+                <select value={covarianceTerm} onChange={(event) => setCovarianceTerm(event.target.value)}>
+                  <option>HHHH</option><option>HVHV</option><option>VVVV</option><option>VHVH</option><option>RHRH</option><option>RVRV</option>
+                </select>
+              </label>
+              <label className="rs-field"><span>Common water threshold method</span>
+                <select value={thresholdMethod} onChange={(event) => setThresholdMethod(event.target.value as typeof thresholdMethod)}>
+                  <option value="otsu">Common Otsu · exploratory</option><option value="manual">Manual dB threshold</option>
+                </select>
+              </label>
+              {thresholdMethod === 'manual' && <label className="rs-field"><span>Common threshold (dB)</span><input type="number" step="0.1" value={thresholdDb} onChange={(event) => setThresholdDb(event.target.value)} /></label>}
             </div>
             <button className="rs-primary-button" type="submit" disabled={catalogueBusy}>
               {catalogueBusy ? 'Searching ASF…' : 'Search GCOV archive'}
             </button>
+            <button className="rs-secondary-button" type="button" disabled={riverJobBusy || catalogue?.status !== 'ready' || !aoiWkt || !eventDate || !user || maturity === 'ALL'} onClick={() => void startLiveProcessing()}>
+              {riverJobBusy ? 'Submitting job…' : 'Download NISAR data & process'}
+            </button>
+            {!user && <p className="rs-muted">Live processing requires account sign-in so job status and private results stay owner-protected.</p>}
+            {eventDate && <p className="rs-warning-inline">The event date is user supplied. Until official gauge/event evidence is attached, results remain provisional.</p>}
             {catalogueError && <p className="rs-error" role="alert">{catalogueError}</p>}
           </form>
           {catalogue && (
@@ -569,6 +669,17 @@ export function RiverShiftPage({ onHome }: Props) {
           <a className="rs-doc-link" href="https://nisar-docs.asf.alaska.edu/availability-overview/" target="_blank" rel="noreferrer">NISAR data availability & maturity ↗</a>
         </aside>
       </section>
+
+      {riverJob && <section className="rs-panel rs-job-panel" aria-live="polite">
+        <div className="rs-section-heading"><div><p className="rs-kicker">LIVE SCIENCE JOB</p><h2>{riverJob.state.replace(/_/g, ' ')} · {riverJob.stage.replace(/_/g, ' ')}</h2></div>
+          <span className="rs-chip">{riverJob.maturity} · {riverJob.frequency} / {riverJob.covariance_term}</span></div>
+        <p className="rs-muted">Job ID {riverJob.id} · {riverJob.start_date} to {riverJob.end_date}</p>
+        {riverJob.github_run_url && <p><a href={riverJob.github_run_url} target="_blank" rel="noreferrer">Open processing run logs ↗</a></p>}
+        {riverJob.error_message && <p className="rs-error" role="alert">{riverJob.error_message}</p>}
+        {riverJob.state === 'succeeded' && <div className="rs-warning-inline"><strong>Processing complete · PROVISIONAL.</strong> Independent validation and authoritative event confirmation are pending, so measured layers stay hidden from the verified map.</div>}
+        {!!riverJob.artifact_manifest?.length && <div className="rs-artifact-list"><strong>Private result files</strong>{riverJob.artifact_manifest.map((artifact, index) => <button className="rs-secondary-button" key={`${artifact.path}-${index}`} type="button" onClick={() => void saveRiverArtifact(index, artifact.name)}>{artifact.name} · {(artifact.bytes / 1_000_000).toFixed(2)} MB</button>)}</div>}
+        {riverJobError && <p className="rs-error" role="alert">{riverJobError}</p>}
+      </section>}
 
       <section className="rs-panel rs-results-panel">
         <div className="rs-section-heading">
