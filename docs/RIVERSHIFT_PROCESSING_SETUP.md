@@ -5,9 +5,9 @@ The RiverShift page accepts a user-drawn WGS84 AOI, a date range, one NISAR matu
 ## Current service state
 
 - The connected `SARGuardian_Dynamic` Supabase project is healthy. Its `river_shift_jobs` table and migration `20261102200956` are already present; this code does not need a new live schema change.
-- The production Vercel frontend has the Google Maps key and the HTTPS backend API URL configured.
+- The production frontend is available at `https://sarguardian-frontend.vercel.app/river-shift`; the Google Maps key and HTTPS backend API URL are configured. The frontend and backend deployments are READY on main commit `56816ac`.
 - The production Vercel backend does not currently have the `RIVERSHIFT_*` dispatch settings. `RIVERSHIFT_ACTIONS_ENABLED` therefore defaults to `false`, so the live-processing button will report that dispatch is not configured.
-- GitHub only accepts `workflow_dispatch` for a workflow file that exists on the repository's default branch. Merge this workflow to `main` before enabling live dispatch; the backend then defaults to running the `main` ref. A different ref can be configured after the workflow is present on `main`.
+- The processing workflow is now present on GitHub's default `main` branch. GitHub can dispatch it with the `main` ref once the backend settings and repository secrets below are configured.
 - A real processing run has not completed. The code and workflow do not turn catalogue matches into fabricated results.
 
 ## GitHub repository secrets
