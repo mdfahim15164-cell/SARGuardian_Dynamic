@@ -34,7 +34,7 @@ Evidence:
 - [x] Add a separate GCOV processing worker for the signed user-selected AOI/date request.
 - [x] Require four comparable observed dates, at least 90% catalogue footprint coverage per date, exact HDF5 term checks, valid-sample masks and one common analysis grid.
 - [x] Keep the existing Sirajganj–Kazipur geometry as an optional, explicitly unapproved research file; it is not used as a default or runtime fallback.
-- [ ] Push the worker and dispatch workflow to the configured GitHub ref.
+- [x] Publish the worker and dispatch workflow on the default `main` branch (PR #4).
 - [ ] Configure Earthdata, private Drive and callback secrets, then complete a real NISAR job in the user-selected study area.
 - [ ] Review the actual NASA CMR manifest, exact product checksums, valid raster coverage and science results from that run.
 - [ ] Confirm the selected event date against an authoritative gauge or independent event record.
@@ -106,7 +106,8 @@ Evidence expected: `.github/workflows/river-shift-gcov-audit.yml`, `.github/work
 - [x] Add an erosion/deposition/new-water legend.
 - [x] Add AOI, manifest, and time-series report gate tests.
 - [x] Configure the production Google Maps key, HTTPS API URL and backend CORS origin.
-- [ ] Deploy the latest workspace changes and verify live Google Maps rendering and job-preview playback.
+- [x] Deploy the latest worker, API and frontend to production (commit `56816ac`; Vercel builds READY).
+- [ ] Verify live Google Maps rendering and job-preview playback after a real processing job.
 - [ ] Import real NISAR-derived results and verify each layer's geographic alignment.
 - [ ] Verify keyboard/touch responsiveness and judge-friendly empty/error states.
 - [ ] Add a one-click sample workflow only after a real, openly shareable case study exists.
@@ -120,7 +121,7 @@ Evidence expected: `.github/workflows/river-shift-gcov-audit.yml`, `.github/work
 - [x] Add a separate NISAR GCOV GitHub Actions worker; it does not use the Landslide GUNW/GOFF workflow.
 - [x] Add signed callbacks, idempotency, acquisition/resource limits and private Drive checksum verification.
 - [x] Add owner-authorized private artifact retrieval; large files remain private when they exceed the web-download limit.
-- [ ] Push and deploy the updated worker/API/frontend code.
+- [x] Merge and deploy the updated worker/API/frontend code (PR #4, commit `56816ac`).
 - [ ] Configure `RIVERSHIFT_*` production variables on Vercel and the required GitHub Actions secrets.
 - [ ] Complete a successful real-data job and verify the private artifacts, callback state and map preview end to end.
 
