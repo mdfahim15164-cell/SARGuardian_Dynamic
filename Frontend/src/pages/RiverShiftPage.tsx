@@ -241,13 +241,13 @@ export function RiverShiftPage({ onHome, user, firebaseConfigured, authState, on
   const playbackFrames = report?.analysis_type === 'water_timeseries_screening'
     && report.time_series?.length === timeSeriesFrames.length ? timeSeriesFrames : [];
   const currentTimeSeriesFrame = playbackFrames[timeSeriesIndex];
-  const jobTimeSeriesFrames: RiverShiftTimeSeriesFrame[] = jobPreview?.jobId === riverJob?.id
+  const jobTimeSeriesFrames: RiverShiftTimeSeriesFrame[] = jobPreview && riverJob && jobPreview.jobId === riverJob.id
     && jobPreview.report?.analysis_type === 'water_timeseries_screening'
     ? jobPreview.report.time_series || [] : [];
   const currentJobFrameMetadata = jobTimeSeriesFrames[jobTimeSeriesIndex];
-  const currentJobFrame = currentJobFrameMetadata && jobFrame?.jobId === riverJob?.id
+  const currentJobFrame = currentJobFrameMetadata && riverJob && jobFrame && jobFrame.jobId === riverJob.id
     && jobFrame.date === currentJobFrameMetadata.date ? jobFrame.data : null;
-  const hasJobPreviewOverlay = Boolean(jobPreview?.jobId === riverJob?.id
+  const hasJobPreviewOverlay = Boolean(jobPreview && riverJob && jobPreview.jobId === riverJob.id
     && (jobPreview.changeLayer || currentJobFrame));
   const verifiedGeoJSONFiles = useMemo(() => {
     if (!report || report.analysis_type === 'water_timeseries_screening') return [];
@@ -577,7 +577,7 @@ export function RiverShiftPage({ onHome, user, firebaseConfigured, authState, on
       ? [currentTimeSeriesFrame.data]
       : verifiedGeoJSONFiles.length
         ? verifiedGeoJSONFiles.map((file) => file.data)
-        : jobPreview?.jobId === riverJob?.id
+        : jobPreview && riverJob && jobPreview.jobId === riverJob.id
           ? [jobPreview.changeLayer?.data, currentJobFrame].filter((layer): layer is RiverShiftGeoJSON => Boolean(layer))
           : [];
     displayLayers.forEach((layer) => map.data.addGeoJson(layer as unknown as object));
